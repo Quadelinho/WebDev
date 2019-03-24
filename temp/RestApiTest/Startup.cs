@@ -28,7 +28,7 @@ namespace RestApiTest
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-            services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BartekBlogPostDB_01"));
+            services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BlogPostDB_01"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

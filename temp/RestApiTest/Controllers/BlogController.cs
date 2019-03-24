@@ -9,7 +9,7 @@ using RestApiTest.Models;
 
 namespace RestApiTest.Controllers
 {
-    [Route("api/bartek")] //?? gdzie można podejrzeć dostępne tokeny, takie jak ten?
+    [Route("api/blog")] //?? gdzie można podejrzeć dostępne tokeny, takie jak ten?
     [ApiController]
     public class BlogController : ControllerBase
     {
@@ -22,7 +22,7 @@ namespace RestApiTest.Controllers
 
         }
 
-        //todo: GET api/values
+        //todo: GET api/blog
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BlogPost>>> Get()
         {
@@ -37,7 +37,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        //todo: GET api/values/5
+        //todo: GET api/blog/5
         [HttpGet("{id}")]
         [ActionName("GetBllogPost")]
         public async Task<ActionResult<BlogPost>> Get(int id)
@@ -54,7 +54,7 @@ namespace RestApiTest.Controllers
             //todo: Done statuses: 200, 404
         }
 
-        // POST api/values
+        // POST api/blog
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] BlogPost value) //?? Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body?
         {
@@ -78,7 +78,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        // PUT api/values/5
+        // PUT api/blog/5
         [HttpPut("{id}")]
         [ActionName("UpdatePostTitle")]
         // TODO [ResponseType(HttpStatus.Ok, typeof(BlogPost))]
@@ -106,7 +106,7 @@ namespace RestApiTest.Controllers
             //todo: Done - status 404, 200
         }
 
-        // DELETE api/values/5
+        // DELETE api/blog/5
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
