@@ -22,14 +22,14 @@ namespace RestApiTest.Controllers
 
         }
 
-        //todo: GET api/blog
+        //GET api/blog
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BlogPost>>> Get()
         {
-            var obj = await context.BlogPosts.ToListAsync();//.ToAsyncEnumerable();
+            var obj = await context.BlogPosts.ToListAsync();
             if (obj != null)
             {
-                return Ok(obj); // TODO: Done make async
+                return Ok(obj);
             }
             else
             {
@@ -37,7 +37,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        //todo: GET api/blog/5
+        //GET api/blog/5
         [HttpGet("{id}")]
         [ActionName("GetBllogPost")]
         public async Task<ActionResult<BlogPost>> Get(int id)
@@ -51,12 +51,11 @@ namespace RestApiTest.Controllers
             {
                 return NotFound(id);
             }
-            //todo: Done statuses: 200, 404
         }
 
         // POST api/blog
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] BlogPost value) //?? Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body?
+        public async Task<IActionResult> Post([FromBody] BlogPost value) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
             if (value != null)
             {
@@ -64,8 +63,7 @@ namespace RestApiTest.Controllers
                 try
                 {
                     await context.SaveChangesAsync();
-                    //todo: Done - statuses: 404, 201 (CreatedAtRoute();
-                    return CreatedAtRoute("GetBlogPost", value); //?? W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie?
+                    return CreatedAtRoute("GetBlogPost", value); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
                 }
                 catch (Exception)
                 {
@@ -74,7 +72,7 @@ namespace RestApiTest.Controllers
             }
             else
             {
-                return NotFound(value); //?? Co robi ta wartość przekazana w ten sposób? Wyświetla jakiego obiektu nie udało się znaleźć?
+                return NotFound(value); //[note] Co robi ta wartość przekazana w ten sposób? Wyświetla w response'ie szczegóły przekazanego obiektu
             }
         }
 
@@ -102,8 +100,6 @@ namespace RestApiTest.Controllers
             {
                 return StatusCode(500); //?? Czy jeśli nie zwrócę w tej sytuacji niczego, lub nie przechwycę wyjątku, to przeglądarka z automatu zinterpretuje to jako 500?
             }
-            //todo: Done - todo + async
-            //todo: Done - status 404, 200
         }
 
         // DELETE api/blog/5
@@ -125,10 +121,11 @@ namespace RestApiTest.Controllers
             {
                 return StatusCode(500);
             }
-            //todo: Done - todo + async
-            //todo: Done - status 404, 200, 204 (np content)
         }
         //TODO: global exception handler
         //TODO: swagger documentation (Swagger UI)
     }
 }
+
+//Map:
+//[note]
