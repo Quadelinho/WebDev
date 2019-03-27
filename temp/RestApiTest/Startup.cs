@@ -36,12 +36,14 @@ namespace RestApiTest
         {
             if (env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
+                //app.UseDeveloperExceptionPage();
+                app.UseExceptionHandler("/api/Error");
             }
             else
             {
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
+                app.UseExceptionHandler("/api/Error");
+                app.UseHsts(); //?? dlaczego tutaj domyślnie nie ma żadnego przekierowania do domyślnej strony z błędami, tylko informacja, żeby używać HTTP Strict Transport Security
             }
 
             app.UseHttpsRedirection();
@@ -49,3 +51,6 @@ namespace RestApiTest
         }
     }
 }
+
+//TODO: zapewnić logowanie w ASP.Net core
+//TODO: dodać logowanie w endpointach ??Serilog
