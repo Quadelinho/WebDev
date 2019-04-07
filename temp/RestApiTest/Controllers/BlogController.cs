@@ -6,11 +6,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RestApiTest.Data;
+using RestApiTest.Exceptions;
 using RestApiTest.Models;
 
 namespace RestApiTest.Controllers
 {
-    [Route("api/blog")] //[note] gdzie można podejrzeć dostępne tokeny, takie jak ten? - w dokumentacji na MSDN
+    [Route("api/[controller]")] //[note] gdzie można podejrzeć dostępne tokeny, takie jak ten? - w dokumentacji na MSDN
     [ApiController]
     public class BlogController : ControllerBase
     {
@@ -19,7 +20,6 @@ namespace RestApiTest.Controllers
         public BlogController(BlogDBContext ctx, IHostingEnvironment environment)
         {
             context = ctx;
-            //todo: initialize database with basic data in debug
             if(environment.IsDevelopment() && ctx.BlogPosts.Count() <= 0)
             {
                 ctx.BlogPosts.AddRange(CreateSampleData(5));
@@ -64,36 +64,38 @@ namespace RestApiTest.Controllers
         {
            
                 context.BlogPosts.Add(value);
-                try
-                {
+                //try
+                //{
                     await context.SaveChangesAsync();
                     return CreatedAtRoute("GetBlog", new { id = value.Id }, value); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
-                }
-                catch (Exception)
-                {
-                    return StatusCode(500); 
-                }
+                //}
+                //catch (Exception)
+                //{
+                //    return StatusCode(500); 
+                //}
         }
 
         // PUT api/blog/5
         [HttpPut("{id}")]
         [ActionName("UpdatePostTitle")]
-        // TODO [ResponseType(HttpStatus.Ok, typeof(BlogPost))]
-        public async Task<ActionResult> Put(int id, [FromBody] BlogPost updatedPost)
+        public async Task<ActionResult> Put(long id, [FromBody] BlogPost updatedPost)
         {
-
-             
             var post = await context.BlogPosts.FindAsync(id);
             if(post == null)
             {
-                return NotFound(id);
+                //return NotFound(id);
+                throw new BlogPostsDomainException("There is no post with given id");
             }
-            post.Title = updatedPost.Title; //?? Czy tutaj miałem zrobić coś jeszcze w ramach zadania domowego, z tym wyszukaniem przez obiekt modelu?
+            post.Title = updatedPost.Title;
 
-            //try
+            //try //[Note] raczej nie ma potrzeby urzywać tu try-catch -> zazwyczaj w web dev'ie stosuje się podejście global exception handler'a
             //{
                 await context. SaveChangesAsync(); //?? Co dokładnie robi to drugie przeciążenie, z parametrem bool? //Użyć Update, żeby nie zmieniać całego kontekstu
-                return Ok(post);//Może być NoContent
+            
+            //?? Co tu ma być zwrócone, żeby było zgodne z HATEOS'em (żeby zwróciło w responsie url'a?)
+            return Ok(post);//Może być NoContent
+            
+            
             //}
             //catch (Exception)
             //{
@@ -110,18 +112,18 @@ namespace RestApiTest.Controllers
             {
                 return NoContent();
             }
-            try
-            {
+           // try
+            //{
                 context.Remove(post);
                 await context.SaveChangesAsync();
                 return NoContent();
-            }
-            catch (Exception)
-            {
-                return StatusCode(500);
-            }
+            //}
+            //catch (Exception)
+            //{
+            //    return StatusCode(500);
+            //}
         }
-        //TODO: global exception handler
+        //DONE: global exception handler
         //TODO: swagger documentation (Swagger UI)
 
         private List<BlogPost> CreateSampleData(int requiredNumberOfSamples)
@@ -144,3 +146,4 @@ namespace RestApiTest.Controllers
 
 //Map:
 //[note]
+//??

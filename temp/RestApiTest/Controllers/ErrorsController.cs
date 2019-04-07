@@ -8,21 +8,23 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using RestApiTest.Exceptions;
 
 namespace RestApiTest.Controllers
 {
 
-    [Route("api/[controller]")] //TODO: naprawić token w blog
+    [Route("api/[controller]")]
     [ApiController]
     public class ErrorController : ControllerBase
     {
+        //[Note] Zazwyczaj taka forma kontrolera błędów jest wystarczająca dla większości aplikacji webowych
         private readonly IHostingEnvironment _environment;
         public ErrorController(IHostingEnvironment env)
         {
             _environment = env;
         }
         [AllowAnonymous]
-        [ApiExplorerSettings(IgnoreApi = true)] //Wyklucza z automatycznego przechodzenia przez framework (w refleksji)
+        [ApiExplorerSettings(IgnoreApi = true)] //[Note] Wyklucza z automatycznego przechodzenia przez framework (w refleksji)
         public IActionResult Index()
         {
             var exceptionFeature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
@@ -30,7 +32,7 @@ namespace RestApiTest.Controllers
             {
                 Exception exceptionThatOccurred = exceptionFeature.Error;
                 string routeWhereExceptionOccurred = exceptionFeature.Path;
-                if (exceptionThatOccurred.GetType() == null)//typeof(BlogPostsDomainException))
+                if (exceptionThatOccurred.GetType() == typeof(BlogPostsDomainException))
                 {
                     var problemDetails = new ValidationProblemDetails()
                     {

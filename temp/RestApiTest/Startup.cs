@@ -43,7 +43,7 @@ namespace RestApiTest
             {
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseExceptionHandler("/api/Error");
-                app.UseHsts(); //?? dlaczego tutaj domyślnie nie ma żadnego przekierowania do domyślnej strony z błędami, tylko informacja, żeby używać HTTP Strict Transport Security
+                app.UseHsts();
             }
 
             app.UseHttpsRedirection();
