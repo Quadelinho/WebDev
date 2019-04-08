@@ -124,7 +124,7 @@ namespace RestApiTest.Controllers
             //}
         }
         //DONE: global exception handler
-        //TODO: swagger documentation (Swagger UI)
+        //TODO: swagger documentation (Swagger UI) //?? Czy jest jakiś pakiet instalujący od razu wszystkie potrzebne komponenty Swagger'a, czy trzeba to zawsze instalować osobno (3 pakiety)?
 
         private List<BlogPost> CreateSampleData(int requiredNumberOfSamples)
         {

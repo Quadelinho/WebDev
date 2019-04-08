@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RestApiTest.Data;
 using Microsoft.EntityFrameworkCore;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace RestApiTest
 {
@@ -29,6 +30,18 @@ namespace RestApiTest
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BlogPostDB_01"));
+
+            //Register swagger service
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Info
+                {
+                    Title = "BlogPost",
+                    Version = "v1",
+                    Description = "Swagger description for blog post",
+                    Contact = new Contact { Name = "Test User", Email = "test@niepodam.pl" }
+                });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -45,9 +58,20 @@ namespace RestApiTest
                 app.UseExceptionHandler("/api/Error");
                 app.UseHsts();
             }
-
+            
             app.UseHttpsRedirection();
             app.UseMvc();
+
+            // Enable middleware to serve generated Swagger as a JSON endpoint.
+            app.UseSwagger(); //?? Jakiego rodzaju akcje stosuje się w praktyce jako parametr?
+                              
+            // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.), 
+            // specifying the Swagger JSON endpoint.
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "BlogPost API V1");
+                //c.RoutePrefix = string.Empty; // serve the Swagger UI at the app's root //??Dlaczego w przykładzie z NIP jest to dodane? W dokumentacji MSDN o tym nie wspominali
+            });
         }
     }
 }
