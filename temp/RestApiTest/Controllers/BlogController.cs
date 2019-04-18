@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using RestApiTest.Data;
 using RestApiTest.Exceptions;
 using RestApiTest.Models;
+using Serilog;
+using Serilog.Core;
 
 namespace RestApiTest.Controllers
 {
@@ -16,9 +20,14 @@ namespace RestApiTest.Controllers
     public class BlogController : ControllerBase
     {
         private BlogDBContext context;
+        //private Logger logger;
+        //ILogger<BlogController> logger;
+        ILogger<BlogController> logger;
 
-        public BlogController(BlogDBContext ctx, IHostingEnvironment environment)
+        public BlogController(ILogger<BlogController> log/*ILogger<BlogController> log*/,  BlogDBContext ctx, IHostingEnvironment environment)
         {
+            logger = log;
+            logger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" });
             context = ctx;
             if(environment.IsDevelopment() && ctx.BlogPosts.Count() <= 0)
             {
@@ -29,6 +38,8 @@ namespace RestApiTest.Controllers
 
         //GET api/blog
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<BlogPost>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<BlogPost>>> Get()
         {
             var obj = await context.BlogPosts.ToListAsync();
@@ -78,13 +89,18 @@ namespace RestApiTest.Controllers
         // PUT api/blog/5
         [HttpPut("{id}")]
         [ActionName("UpdatePostTitle")]
+
+        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status409Conflict)]
         public async Task<ActionResult> Put(long id, [FromBody] BlogPost updatedPost)
         {
             var post = await context.BlogPosts.FindAsync(id);
             if(post == null)
             {
-                //return NotFound(id);
-                throw new BlogPostsDomainException("There is no post with given id");
+                return NotFound(id);
+                //throw new BlogPostsDomainException("There is no post with given id");
             }
             post.Title = updatedPost.Title;
 
@@ -105,6 +121,9 @@ namespace RestApiTest.Controllers
 
         // DELETE api/blog/5
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)] //TODO: ProduceResponse dla pozostałych endpointów
         public async Task<ActionResult> Delete(int id)
         {
             var post = await context.BlogPosts.FindAsync(id);

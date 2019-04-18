@@ -13,14 +13,19 @@ using Microsoft.Extensions.Options;
 using RestApiTest.Data;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Swagger;
+using Serilog;
 
 namespace RestApiTest
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        private readonly ILogger<BlogDBContext> logger;
+
+        public Startup(IConfiguration configuration, ILogger<BlogDBContext> log) //?? W przykładzie z NIP tutaj jest już wstrzykiwany obiekt logger'a - skąd on się tam bierze? Jakieś automatyczne dependency injection to jest w stanie ogarnąć, czy trzeba to też gdzieś podać w konfiguracji?
         {
             Configuration = configuration;
+            //Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().WriteTo.File("Logs\\BlogPosts-{date}.txt").CreateLogger();
+            logger = log;
         }
 
         public IConfiguration Configuration { get; }
@@ -70,7 +75,7 @@ namespace RestApiTest
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "BlogPost API V1");
-                //c.RoutePrefix = string.Empty; // serve the Swagger UI at the app's root //??Dlaczego w przykładzie z NIP jest to dodane? W dokumentacji MSDN o tym nie wspominali
+                c.RoutePrefix = string.Empty; // serve the Swagger UI at the app's root //??Dlaczego w przykładzie z NIP jest to dodane? W dokumentacji MSDN o tym nie wspominali
             });
         }
     }
