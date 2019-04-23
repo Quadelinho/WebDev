@@ -1,19 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using RestApiTest.Data;
-using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Swagger;
-using Serilog;
 
 namespace RestApiTest
 {
@@ -21,10 +14,12 @@ namespace RestApiTest
     {
         private readonly ILogger<BlogDBContext> logger;
 
-        public Startup(IConfiguration configuration, ILogger<BlogDBContext> log) //?? W przykładzie z NIP tutaj jest już wstrzykiwany obiekt logger'a - skąd on się tam bierze? Jakieś automatyczne dependency injection to jest w stanie ogarnąć, czy trzeba to też gdzieś podać w konfiguracji?
+        //?? Coś tu nie gra z docker'em - bez zmian czasem działa, a innym razem w ogóle nie reaguje na ten projekt (choć hello-world odpowiada i nie zgłasza nic żadneego błędu)
+
+        //?? gdzie definiuje się mapowanie tego automatycznego Dependency Injection, np. kiedy mam kilka implementacji danego interfejsu?
+        public Startup(IConfiguration configuration, ILogger<BlogDBContext> log) //[Note] Jest tu już wstrzykiwany obiekt logger'a - Atomatyczne dependency injection jest w stanie to ogarnąć
         {
             Configuration = configuration;
-            //Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().WriteTo.File("Logs\\BlogPosts-{date}.txt").CreateLogger();
             logger = log;
         }
 
@@ -75,11 +70,10 @@ namespace RestApiTest
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "BlogPost API V1");
-                c.RoutePrefix = string.Empty; // serve the Swagger UI at the app's root //??Dlaczego w przykładzie z NIP jest to dodane? W dokumentacji MSDN o tym nie wspominali
+                c.RoutePrefix = string.Empty; // serve the Swagger UI at the app's root //[Note] Dodanie tego wpisu powoduje, że zawsze jeśli zostanie podany "pusty" url (np. tylko localhost + port), bez konkretnego wywołania - z automatu zostanie wyświetlona strona z dokumentacją API
             });
         }
     }
 }
 
-//TODO: zapewnić logowanie w ASP.Net core
-//TODO: dodać logowanie w endpointach ??Serilog
+//DONE: dodać logowanie w endpointach ??Serilog

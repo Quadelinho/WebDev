@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
-using System.Net;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using RestApiTest.Exceptions;
+using System;
+using System.Net;
 
 namespace RestApiTest.Controllers
 {
@@ -19,9 +17,12 @@ namespace RestApiTest.Controllers
     {
         //[Note] Zazwyczaj taka forma kontrolera błędów jest wystarczająca dla większości aplikacji webowych
         private readonly IHostingEnvironment _environment;
-        public ErrorController(IHostingEnvironment env)
+        private ILogger<ErrorController> logger;
+
+        public ErrorController(ILogger<ErrorController> log, IHostingEnvironment env)
         {
             _environment = env;
+            logger = log;
         }
         [AllowAnonymous]
         [ApiExplorerSettings(IgnoreApi = true)] //[Note] Wyklucza z automatycznego przechodzenia przez framework (w refleksji)
@@ -41,6 +42,7 @@ namespace RestApiTest.Controllers
                         Detail = "Please refer to the errors property for additional details."
                     };
                     problemDetails.Errors.Add("DomainValidations", new string[] { exceptionThatOccurred.Message.ToString() });
+                    logger.LogError("Domain error details: {@0}", problemDetails);
                     return BadRequest(problemDetails);
                 }
                 else
@@ -52,6 +54,7 @@ namespace RestApiTest.Controllers
                         Details = _environment.IsDevelopment() ? exceptionThatOccurred.ToString() : null,
                         Instance = routeWhereExceptionOccurred
                     };
+                    logger.LogError("Server error details: {@0}", problemDetails);
                     return StatusCode((int)HttpStatusCode.InternalServerError, problemDetails);
                 }
             }
