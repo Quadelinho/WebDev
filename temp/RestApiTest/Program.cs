@@ -18,7 +18,7 @@ namespace RestApiTest
             .ConfigureLogging(logging => {
                 logging.ClearProviders(); //?? Dlaczego to jest tu dodane w przykładzie NIP? Nie znalazłem do tego żadnej dokumentacji, ani użycia w necie. Czy jest ryzyko, że jakiś provider będzie zarejstrowany jeszcze z innego punktu?
                 logging.AddConsole();
-                logging.AddFile("Logs/BlogPosts-{Date}.log");
+                //logging.AddFile("Logs/BlogPosts-{Date}.log");
                 logging.SetMinimumLevel(LogLevel.Information);
                 });
     }

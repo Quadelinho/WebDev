@@ -51,7 +51,7 @@ namespace RestApiTest.Controllers
         }
 
         //GET api/blog/5
-        [HttpGet("{id}", Name = "GetBlog")] //?? Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi
+        [HttpGet("{id}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
                                             //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //??Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -72,7 +72,7 @@ namespace RestApiTest.Controllers
 
         // POST api/blog
         [HttpPost]
-        [ProducesResponseType(/*typeof(IActionResult<BlogPost>),*/ StatusCodes.Status201Created)] //?? Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof?
+        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status201Created)] //?? Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof?
         public async Task<IActionResult> Post([FromBody] BlogPost value) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
             logger.LogInformation("Calling post for the following object: {@0} ", value); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
@@ -124,7 +124,7 @@ namespace RestApiTest.Controllers
             context.Remove(post);
             await context.SaveChangesAsync();
             logger.LogInformation("Element with given ID has been successfully removed");
-            return NoContent(); //?? Jak zwrócić element usunięty? Ma być wtedy zwracany status OK z obiektem?
+            return NoContent(); //[Note] Jak zwrócić element usunięty? Ma być wtedy zwracany status OK z obiektem? [OK + obiekt]
         }
         //DONE: global exception handler
         //DONE: swagger documentation (Swagger UI)

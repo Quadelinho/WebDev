@@ -13,7 +13,14 @@ namespace RestApiTest.Models
        
         public string Title { get; set; }
         public string Content { get; set; }
-        //public string Author { get; set; } // TODO: add in first migration
-        //public DateTime Modified { get; set; }
+
+        [StringLength(25, MinimumLength = 3)]
+        public string Author { get; set; }
+
+        public DateTime Modified { get; set; } = DateTime.Now;
     }
+
+    //TODO: baza SQL Express + database upgrade (ale już bez migracji)
+    //TODO: dla bazy SQLite -> kolejna migracja z polem na datę typu string, żeby uwzględniało czas
+    //TODO: NIP 6 i 7 + dalej
 }
