@@ -72,10 +72,11 @@ namespace RestApiTest.Controllers
 
         // POST api/blog
         [HttpPost]
-        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status201Created)] //?? Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof?
+        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty
         public async Task<IActionResult> Post([FromBody] BlogPost value) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
             logger.LogInformation("Calling post for the following object: {@0} ", value); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
+            value.Modified = DateTime.Now.ToLongDateString();
             context.BlogPosts.Add(value);
             await context.SaveChangesAsync();
             return CreatedAtRoute("GetBlog", new { id = value.Id }, value); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
@@ -99,6 +100,7 @@ namespace RestApiTest.Controllers
                 //throw new BlogPostsDomainException("There is no post with given id");
             }
             post.Title = updatedPost.Title;
+            post.Modified = DateTime.Now.ToLongDateString();
 
             //try //[Note] raczej nie ma potrzeby urzywać tu try-catch -> zazwyczaj w web dev'ie stosuje się podejście global exception handler'a
                 await context. SaveChangesAsync(); //?? Co dokładnie robi to drugie przeciążenie, z parametrem bool? //Użyć Update, żeby nie zmieniać całego kontekstu
