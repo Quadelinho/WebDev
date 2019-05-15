@@ -30,7 +30,12 @@ namespace RestApiTest
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             //services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BlogPostDB_01"));
-            services.AddDbContext<BlogDBContext>(opt => opt.UseSqlite("Data Source=Data/BlogPostDB_01.db"));
+            //services.AddDbContext<BlogDBContext>(opt => opt.UseSqlite("Data Source=Data/BlogPostDB_01.db"));
+
+            //TODO: config file Json i dodać tam connection string (wstrzyknąć IConfig).
+
+            var connectionString = @"Data Source=plktw4624n\SQLEXPRESS;Database=BlogPostDB_01;Trusted_Connection=true";
+            services.AddDbContext<BlogDBContext>(opt => opt.UseSqlServer(connectionString)); //TODO: użyć puli połączeń
 
             //Register swagger service
             services.AddSwaggerGen(c =>
