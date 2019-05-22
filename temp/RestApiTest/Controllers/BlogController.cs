@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RestApiTest.Data;
-using RestApiTest.Models;
+using RestApiTest.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,17 +16,17 @@ namespace RestApiTest.Controllers
     [ApiController]
     public class BlogController : ControllerBase
     {
-        private BlogDBContext context;
+        private ForumContext context;
         ILogger<BlogController> logger;
 
-        public BlogController(ILogger<BlogController> log,  BlogDBContext ctx, IHostingEnvironment environment)
+        public BlogController(ILogger<BlogController> log,  ForumContext ctx, IHostingEnvironment environment)
         {
             logger = log;
             logger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" });
             context = ctx;
-            if(environment.IsDevelopment() && ctx.BlogPosts.Count() <= 0)
+            if(environment.IsDevelopment() && ctx.Questions.Count() <= 0)
             {
-                ctx.BlogPosts.AddRange(CreateSampleData(5));
+                ctx.Questions.AddRange(CreateSampleData(5));
                 ctx.SaveChanges();
             }
         }
@@ -38,7 +38,7 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult<IEnumerable<BlogPost>>> Get()
         {
             logger.LogInformation("Calling get for all objects");
-            var obj = await context.BlogPosts.ToListAsync();
+            var obj = await context.Questions.ToListAsync();
             if (obj != null)
             {
                 return Ok(obj);
@@ -58,7 +58,7 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult<BlogPost>> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
-            BlogPost obj = await context.BlogPosts.FindAsync(id); //?? Wykonanie wpadło tutaj zaraz jak tylko wpisałem wartość w pasku adresowym, bez zatwierdzenia - czy to jakaś forma cache'owania a'priori przeglądarki (po kliknięciu enter już od razu dostałem wynik)? Czy da się wymusić, żeby nie były robione takie operacje dopóki user nie wciśnie enter?
+            BlogPost obj = await context.Questions.FindAsync(id); //?? Wykonanie wpadło tutaj zaraz jak tylko wpisałem wartość w pasku adresowym, bez zatwierdzenia - czy to jakaś forma cache'owania a'priori przeglądarki (po kliknięciu enter już od razu dostałem wynik)? Czy da się wymusić, żeby nie były robione takie operacje dopóki user nie wciśnie enter?
             if (obj != null)
             {
                 return Ok(obj);
@@ -73,11 +73,11 @@ namespace RestApiTest.Controllers
         // POST api/blog
         [HttpPost]
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty
-        public async Task<IActionResult> Post([FromBody] BlogPost value) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
+        public async Task<IActionResult> Post([FromBody] QuestionPost value) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
             logger.LogInformation("Calling post for the following object: {@0} ", value); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
  //           value.Modified = DateTime.Now.ToLongDateString();
-            context.BlogPosts.Add(value);
+            context.Questions.Add(value);
             await context.SaveChangesAsync();
             return CreatedAtRoute("GetBlog", new { id = value.Id }, value); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
         }
@@ -92,7 +92,7 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult> Put(long id, [FromBody] BlogPost updatedPost)
         {
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
-            var post = await context.BlogPosts.FindAsync(id);
+            var post = await context.Questions.FindAsync(id);
             if(post == null)
             {
                 logger.LogWarning("There was nothing to update");
@@ -116,7 +116,7 @@ namespace RestApiTest.Controllers
         //[ProducesResponseType(StatusCodes.Status404NotFound)] //DONE: ProduceResponse dla pozostałych endpointów
         public async Task<ActionResult> Delete(int id)
         {
-            var post = await context.BlogPosts.FindAsync(id);
+            var post = await context.Questions.FindAsync(id);
             if (post == null)
             {
                 logger.LogWarning("Element with givrn ID doesn't exist - nothing is deleted");
@@ -131,12 +131,12 @@ namespace RestApiTest.Controllers
         //DONE: global exception handler
         //DONE: swagger documentation (Swagger UI)
 
-        private List<BlogPost> CreateSampleData(int requiredNumberOfSamples)
+        private IEnumerable<QuestionPost> CreateSampleData(int requiredNumberOfSamples)
         {
-            List<BlogPost> posts = new List<BlogPost>();
+            List<QuestionPost> posts = new List<QuestionPost>();
             for (int postIndex = 1; postIndex <= requiredNumberOfSamples; ++postIndex)
             {
-                posts.Add(new BlogPost()
+                posts.Add(new QuestionPost()
                 {
                     //Author = "User" + postIndex,
                     Content = DateTime.Now.ToShortDateString(),

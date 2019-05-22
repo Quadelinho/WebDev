@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RestApiTest.Models
+namespace RestApiTest.Core.Models
 {
-    public class User
+    public class ForumUser
     {
         public long Id { get; set; }
         public Roles Role { get; private set; }

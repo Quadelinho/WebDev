@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RestApiTest.Models
+namespace RestApiTest.Core.Models
 {
     public class SurveyQuestion
     {
@@ -11,6 +11,6 @@ namespace RestApiTest.Models
         public string Question { get; set; }
         //public List<string> AvailableResponses { get; set; }
         public string OpenResponse { get; set; }
-        public User AnsweredBy { get; set; }
+        public ForumUser AnsweredBy { get; set; }
     }
 }

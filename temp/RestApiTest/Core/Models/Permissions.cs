@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RestApiTest.Models
+namespace RestApiTest.Core.Models
 {
     //?? Czy tego typu rzeczy też się daje jako model?
-    public class Permissions
-    {
-        public bool canAsk { get; set; }
-        public bool canMark { get; set; }
-        public bool isModerator { get; set; }
-        public bool isAdministrator { get; set; }
-    }
+    //public class Permissions
+    //{
+    //    public bool canAsk { get; set; }
+    //    public bool canMark { get; set; }
+    //    public bool isModerator { get; set; }
+    //    public bool isAdministrator { get; set; }
+    //} //TODO: wyliczać biznesową logiką
 
     [Flags]
     public enum Perms
