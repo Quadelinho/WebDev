@@ -1,9 +1,11 @@
-﻿
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using RestApiTest.Core.Exceptions;
+using RestApiTest.Core.Interfaces;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
 using RestApiTest.Infrastructure.Data;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace RestApiTest.Core.Repositories
 { //[Note] - nie nie, musi. - Czy każda klasa modelu musi / powinna mieć swoje pokrycie w klasie Repository,czy np. operacje na komentarzach mogą być z poziomu BlogPostRepository (bo komentarze nie mogą przecież być procesowane samodzielnie, w oderwaniu od postów)
@@ -15,46 +17,105 @@ namespace RestApiTest.Core.Repositories
             this.context = context;
         }
 
-        public Task AddAsync(BlogPost objectToAdd)
+        public async Task AddAsync(BlogPost objectToAdd) //?? czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
-            throw new System.NotImplementedException();
+            if(objectToAdd == null)
+            {
+                throw new BlogPostsDomainException("Failed to insert the post - empty entry"); //?? czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
+                                                                                                    //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
+            }
+
+            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
+            if (isTitleDuplicate)
+            {
+                throw new BlogPostsDomainException("Update failed - the post with given title already exists");
+            }
+
+            await context.Posts.AddAsync(objectToAdd); //?? Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
+            await context.SaveChangesAsync();
         }
 
-        public Task AddMarkAsync(bool refersToPositive)
+        public async Task DeleteAsync(long id)
         {
-            throw new System.NotImplementedException();
+            BlogPost postToRemove = await context.Posts.FindAsync(id);
+            if(postToRemove != null)
+            {
+                context.Posts.Remove(postToRemove);
+                await context.SaveChangesAsync();
+            }
         }
 
-        public Task DeleteAsync(long id)
+        public async Task</*IAsyncEnumerable*/IEnumerable<BlogPost>> GetAllBlogPostsAsync() => (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable();
+
+        public async Task<BlogPost> GetAsync(long id)
         {
-            throw new System.NotImplementedException();
+            return await context.Posts.FindAsync(id);
         }
 
-        public Task<IEnumerable<BlogPost>> GetAllBlogPostsAsync()
+        public async Task UpdateAsync(BlogPost objectToUpdate)
         {
-            throw new System.NotImplementedException();
+            if (objectToUpdate == null)
+            {
+                throw new BlogPostsDomainException("Update failed - empty source object");
+            }
+
+            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToUpdate.Title && p.Id != objectToUpdate.Id) != null; //?? Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
+            if (isTitleDuplicate)
+            {
+                throw new BlogPostsDomainException("Update failed - the post with given title already exists");
+            }
+
+            BlogPost post = await context.Posts.FindAsync(objectToUpdate.Id);
+            if (post != null)
+            {
+                context.Entry(post).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
+                await context.SaveChangesAsync();
+            }
         }
 
-        public Task<long> GetAllMarksOfGivenType(bool refersToPositive)
+        public long GetAllMarksOfGivenType(bool refersToPositive, long relatedItemId)
         {
-            throw new System.NotImplementedException();
+            return (long)context.Votes.Count(v => v.VotedPost.Id == relatedItemId && v.IsLike == refersToPositive);
         }
 
-        public Task<BlogPost> GetAsync(long id)
+        public async Task AddMarkAsync(Vote voteToAdd)
         {
-            throw new System.NotImplementedException();
+            if (voteToAdd == null || voteToAdd.VotedPost == null)
+            {
+                throw new BlogPostsDomainException("Adding mark failed - empty object");
+            }
+
+            Vote alreadyExistingVoteEntry = context.Votes.Where(v => v.Voter.Id == voteToAdd.Voter.Id && v.VotedPost.Id == voteToAdd.VotedPost.Id) as Vote;
+            if (alreadyExistingVoteEntry == null)
+            {
+                await context.Votes.AddAsync(voteToAdd);
+                await context.SaveChangesAsync();
+            }
+            else if (alreadyExistingVoteEntry.IsLike != voteToAdd.IsLike) //Given user has already voted but with opposite value -> update
+            {
+                alreadyExistingVoteEntry.IsLike = voteToAdd.IsLike;
+                await context.SaveChangesAsync();
+            }
         }
 
-        public Task RemoveMarkAsync(bool refersToPositive)
+        public async Task RemoveMarkAsync(long id)
         {
-            throw new System.NotImplementedException();
+            Vote voteToRemove = await context.Votes.FindAsync(id);
+            if(voteToRemove != null)
+            {
+                IVotable relatedObject = null;
+                if (voteToRemove.VotedPost != null)
+                {
+                    relatedObject = voteToRemove.VotedPost;
+                }
+                else
+                {
+                    relatedObject = voteToRemove.VotedComment;
+                }
+                relatedObject?.RemoveReferenceToVote(voteToRemove.Id);
+                context.Remove(voteToRemove);
+                await context.SaveChangesAsync(); //?? Czy tutaj usuwając Vote'a muszę też zaktualizować powiązany z nim obiekt, czy EF sam to już ogarnie w context'cie?
+            }
         }
-
-        public Task UpdateAsync(BlogPost objectToUpdate)
-        {
-            throw new System.NotImplementedException();
-        }
-        //TODO: implementacja interfejsu repo
-
     }
 }

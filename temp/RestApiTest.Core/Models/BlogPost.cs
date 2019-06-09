@@ -1,11 +1,12 @@
 ﻿using RestApiTest.Core.Interfaces;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
 namespace RestApiTest.Core.Models
 {
-    public class BlogPost : IVotable //?? Czy tego typu implementacje powinny być w ramach klasy modelu, czy raczej implementacji repozytorium (BlogPostRepository)?
+    public class BlogPost : IVotable /*: IMarkable*/ //?? Czy tego typu implementacje powinny być w ramach klasy modelu, czy raczej implementacji repozytorium (BlogPostRepository)?
     {
         [Required]
         public long Id { get; set; }
@@ -16,20 +17,41 @@ namespace RestApiTest.Core.Models
         [StringLength(25, MinimumLength = 3)]
         public ForumUser Author { get; set; }
 
-        //?? .net core nie obsługuje domyślnych wartości getter'ów
+        //[Note] .net core nie obsługuje domyślnych wartości getter'ów
         //?? Czy da się jakoś oznaczyć pole, żeby nie było podawane w body? Czy w ogóle tak się robi, czy w praktyce się tego nie określa, 
             //a po prostu takie "automatyczne pola" jak np. modified po prostu i tak się zawsze nadpisuje z poziomu kodu?
-        //?? Baza utworzona po przesiadce na SQLExpress'a dalej widzi tutaj typ datetime, nie string
         public DateTime? Modified { get; set; } //= DateTime.Now.ToLongDateString(); //?? Zmiana typu pola nie została wykryta przez komendę Update-Database jako modyfikacja do utowrzenia migracji
-        public IQueryable<Comment> Comments { get; set; }
-        //public long Likes { get; set; }
-        //public string Dislikes { get; set; } 
-        public IQueryable<Vote> Votes { get; set; } //TODO: przerobić like'i na Event Sourcing. Przerobić na model Vote (tabela z poszczególnymi informacjami [Note] - pozwala w razie czego odtworzyć stan np.
+        public ICollection<Comment> Comments { get; set; }
+        public ICollection<Vote> Votes { get; set; } //TODO: przerobić like'i na Event Sourcing. Przerobić na model Vote (tabela z poszczególnymi informacjami [Note] - pozwala w razie czego odtworzyć stan np.
+
+        //public void AddVote(Vote voteToAdd)
+        //{
+        //    //Votes.
+        //}
 
         public long GetId()
         {
             return Id;
         }
+
+        public IVotable GetVotableObject()
+        {
+            return this;
+        }
+
+        public void RemoveReferenceToVote(long id)
+        {
+            Vote voteToRemove = Votes.FirstOrDefault(v => v.Id == id);
+            if(voteToRemove != null)
+            {
+                Votes.Remove(voteToRemove);
+            }
+        }
+
+        //public void RemoveVote(long voteId)
+        //{
+        //    throw new NotImplementedException();
+        //}
     } //
 
 

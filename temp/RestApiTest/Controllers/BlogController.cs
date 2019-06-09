@@ -70,6 +70,24 @@ namespace RestApiTest.Controllers
             }
         }
 
+        [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<BlogPost>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult<IEnumerable<BlogPost>>> GetAll()
+        {
+            logger.LogInformation("Calling get for all posts");
+            var posts = context.Posts.ToAsyncEnumerable();
+            long? count = await posts?.Count(null);
+            if(count.HasValue && count.Value > 0)
+            {
+                return Ok(posts);
+            }
+            else
+            {
+                return NoContent();
+            }
+        }
+
         // POST api/blog
         [HttpPost]
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty

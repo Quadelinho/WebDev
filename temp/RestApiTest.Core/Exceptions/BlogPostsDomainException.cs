@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RestApiTest.Exceptions
+namespace RestApiTest.Core.Exceptions
 {
     public class BlogPostsDomainException : Exception
     {

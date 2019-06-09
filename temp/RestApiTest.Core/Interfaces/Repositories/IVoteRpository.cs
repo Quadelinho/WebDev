@@ -10,6 +10,6 @@ namespace RestApiTest.Core.Interfaces.Repositories
         //[Note] - da się to skonfigurować prawdopodobnie w middlewere'ze, jako zachowanie w przypadku niezdefiniowanych pól (np. czy ma je zastępować pustymi, czy nie robić z nimi nic) - Czy z automatu framework ogarnia rozróżnienie między niepełnym obiektem, a wartościami null'owymi (np. że jeśli nie podam w ogóle pola w body request'u, to pole nie zostanie zaktualizowane na bazie, a jeśli chcę wyzerować dane pole, to mogę w body podać pole = null), czy wszystko to trzeba ręcznie obsłużyć?
         Task<ForumUser> GetVoterDetails(long voteId);
         Task<IVotable> GetVotedSubject(long voteId);
-        Task<IEnumerable<Vote>> GetAllVotesForObject(IVotable relatedObject);
+        Task<IEnumerable<Vote>> GetAllVotesForObject(IMarkable relatedObject);
     }
 }
