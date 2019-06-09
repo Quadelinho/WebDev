@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RestApiTest.Data;
+using RestApiTest.Infrastructure.Data;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace RestApiTest
@@ -40,7 +40,7 @@ namespace RestApiTest
             //services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BlogPostDB_01"));
             //services.AddDbContext<BlogDBContext>(opt => opt.UseSqlite("Data Source=Data/BlogPostDB_01.db"));
 
-            //TODO: [Done] config file Json i dodać tam connection string (wstrzyknąć IConfig).
+            //[Done] config file Json i dodać tam connection string (wstrzyknąć IConfig).
 
             //var connectionString = @"Data Source=plktw4624n\SQLEXPRESS;Database=BlogPostDB_01;Trusted_Connection=true";
             var connectionString = Configuration.GetValue<string>("connectionString");

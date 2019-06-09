@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using RestApiTest.Data;
+using RestApiTest.Infrastructure.Data;
 using RestApiTest.Core.Models;
 using System;
 using System.Collections.Generic;
@@ -52,13 +52,13 @@ namespace RestApiTest.Controllers
 
         //GET api/blog/5
         [HttpGet("{id}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
-                                            //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //??Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
+                                            //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //[??]Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<BlogPost>> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
-            BlogPost obj = await context.Questions.FindAsync(id); //?? Wykonanie wpadło tutaj zaraz jak tylko wpisałem wartość w pasku adresowym, bez zatwierdzenia - czy to jakaś forma cache'owania a'priori przeglądarki (po kliknięciu enter już od razu dostałem wynik)? Czy da się wymusić, żeby nie były robione takie operacje dopóki user nie wciśnie enter?
+            BlogPost obj = await context.Questions.FindAsync(id);
             if (obj != null)
             {
                 return Ok(obj);

@@ -25,7 +25,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Core\" />
     <Folder Include="DTO\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RestApiTest.Core\RestApiTest.Core.csproj" />
+    <ProjectReference Include="..\RestApiTest.Infrastructure\RestApiTest.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

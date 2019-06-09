@@ -18,6 +18,7 @@ namespace RestApiTest.Core.Models
         public bool IsRecommendedSolution { get; set; }
         public long Points { get; set; }
         public bool IsAdministrativeNote { get; set; }
+        public BlogPost RelatedPost { get; set; }
 
         //?? Jak jest ogarnięte po stronie framework'a to rozróżnienie IQueryable i IEnumerable? czy wystarczy rzeczywiśćie tylko zmienić typ interfejsu, żeby ta sama zmienna odwołująca się do kolekcji z bazy była przez EF przetwarzana zupełnie inaczej?
 
@@ -25,6 +26,3 @@ namespace RestApiTest.Core.Models
         //public QuestionPost QuestionPostId {get; set;} //TODO: Will it work
     }
 }
-
-
-//TODO: Interfejsy repozytoriów + implementacja //kolekcje zwracane -> queryable
