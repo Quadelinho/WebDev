@@ -69,7 +69,11 @@ namespace RestApiTest.Core.Repositories
             if (post != null)
             {
                 context.Entry(post).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
-                await context.SaveChangesAsync();
+                await context.SaveChangesAsync(); //?? Było polecane użycie update, żeby nie zmieniać całego kontekstu, ale nie ma update'u asynchronicznego
+            }
+            else
+            {
+                throw new BlogPostsDomainException("Update failed - no post to update");
             }
         }
 
@@ -94,7 +98,7 @@ namespace RestApiTest.Core.Repositories
             else if (alreadyExistingVoteEntry.IsLike != voteToAdd.IsLike) //Given user has already voted but with opposite value -> update
             {
                 alreadyExistingVoteEntry.IsLike = voteToAdd.IsLike;
-                await context.SaveChangesAsync();
+                await context.SaveChangesAsync(); //?? Co dokładnie robi to drugie przeciążenie, z parametrem bool? - doczytać
             }
         }
 

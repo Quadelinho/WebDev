@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace RestApiTest.Core.Models
 {
@@ -14,5 +15,6 @@ namespace RestApiTest.Core.Models
         public DateTime LastLoggedIn { get; set; }
         public int ReputationPoints { get; set; }
         public bool SubscribedToNewsletter { get; set; }
+        public ICollection<Comment> UsersComments { get; set; }
     }
 }

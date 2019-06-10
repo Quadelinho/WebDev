@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using RestApiTest.Infrastructure.Data;
+using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
 using System;
 using System.Collections.Generic;
@@ -16,39 +15,43 @@ namespace RestApiTest.Controllers
     [ApiController]
     public class BlogController : ControllerBase
     {
-        private ForumContext context;
+        private IBlogPostRepository repository;
         ILogger<BlogController> logger;
 
-        public BlogController(ILogger<BlogController> log,  ForumContext ctx, IHostingEnvironment environment)
+        public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment)
         {
             logger = log;
-            logger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" });
-            context = ctx;
-            if(environment.IsDevelopment() && ctx.Questions.Count() <= 0)
+            //Slogger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" });
+            this.repository = repository;
+            var posts = repository.GetAllBlogPostsAsync();
+            if (posts == null || posts.Result.Count() == 0)
             {
-                ctx.Questions.AddRange(CreateSampleData(5));
-                ctx.SaveChanges();
+                var sampleData = CreateSampleData(5);
+                foreach (var post in sampleData)
+                {
+                    repository.AddAsync(post);
+                }
             }
         }
 
         //GET api/blog
-        [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<BlogPost>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<BlogPost>>> Get()
-        {
-            logger.LogInformation("Calling get for all objects");
-            var obj = await context.Questions.ToListAsync();
-            if (obj != null)
-            {
-                return Ok(obj);
-            }
-            else
-            {
-                logger.LogWarning("There is no blog post element to be returned");
-                return NoContent();
-            }
-        }
+        //[HttpGet]
+        //[ProducesResponseType(typeof(IEnumerable<BlogPost>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status204NoContent)]
+        //public async Task<ActionResult<IEnumerable<BlogPost>>> Get()
+        //{
+        //    logger.LogInformation("Calling get for all objects");
+        //    var allPosts = await repository.GetAllBlogPostsAsync();
+        //    if (allPosts != null)
+        //    {
+        //        return Ok(allPosts); 
+        //    }
+        //    else
+        //    {
+        //        logger.LogWarning("There is no blog post element to be returned");
+        //        return NoContent();
+        //    }
+        //}
 
         //GET api/blog/5
         [HttpGet("{id}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
@@ -58,10 +61,10 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult<BlogPost>> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
-            BlogPost obj = await context.Questions.FindAsync(id);
-            if (obj != null)
+            BlogPost post = await repository.GetAsync(id);
+            if (post != null)
             {
-                return Ok(obj);
+                return Ok(post);
             }
             else
             {
@@ -75,15 +78,17 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<BlogPost>>> GetAll()
         {
+            //?? Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem)
             logger.LogInformation("Calling get for all posts");
-            var posts = context.Posts.ToAsyncEnumerable();
-            long? count = await posts?.Count(null);
+            var posts = await repository.GetAllBlogPostsAsync(); //?? Jak tutaj się robi jakieś "porcjowanie", albo coś w rodzaju yield'a, żeby nie pchać dużej paczki w response'ie/
+            long? count = posts?.Count();
             if(count.HasValue && count.Value > 0)
             {
                 return Ok(posts);
             }
             else
             {
+                logger.LogWarning("No posts to return");
                 return NoContent();
             }
         }
@@ -91,13 +96,12 @@ namespace RestApiTest.Controllers
         // POST api/blog
         [HttpPost]
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty
-        public async Task<IActionResult> Post([FromBody] QuestionPost value) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
+        public async Task<IActionResult> Post([FromBody] BlogPost postToAdd) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
-            logger.LogInformation("Calling post for the following object: {@0} ", value); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
- //           value.Modified = DateTime.Now.ToLongDateString();
-            context.Questions.Add(value);
-            await context.SaveChangesAsync();
-            return CreatedAtRoute("GetBlog", new { id = value.Id }, value); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
+            logger.LogInformation("Calling post for the following object: {@0} ", postToAdd); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
+//           postToAdd.Modified = DateTime.Now.ToLongDateString();
+            await repository.AddAsync(postToAdd);
+            return CreatedAtRoute("GetBlog", new { id = postToAdd.Id }, postToAdd); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
         }
 
         // PUT api/blog/5
@@ -110,7 +114,7 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult> Put(long id, [FromBody] BlogPost updatedPost)
         {
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
-            var post = await context.Questions.FindAsync(id);
+            var post = await repository.GetAsync(updatedPost.Id);
             if(post == null)
             {
                 logger.LogWarning("There was nothing to update");
@@ -120,8 +124,8 @@ namespace RestApiTest.Controllers
             post.Title = updatedPost.Title;
 //            post.Modified = DateTime.Now.ToLongDateString();
 
-            //try //[Note] raczej nie ma potrzeby urzywać tu try-catch -> zazwyczaj w web dev'ie stosuje się podejście global exception handler'a
-                await context. SaveChangesAsync(); //?? Co dokładnie robi to drugie przeciążenie, z parametrem bool? //Użyć Update, żeby nie zmieniać całego kontekstu
+            //try //[Note] raczej nie ma potrzeby używać tu try-catch -> zazwyczaj w web dev'ie stosuje się podejście global exception handler'a
+             //Użyć Update, żeby nie zmieniać całego kontekstu
             
             //?? Co tu ma być zwrócone, żeby było zgodne z HATEOS'em (żeby zwróciło w responsie url'a?)
             return Ok(post);//Może być NoContent
@@ -134,15 +138,14 @@ namespace RestApiTest.Controllers
         //[ProducesResponseType(StatusCodes.Status404NotFound)] //DONE: ProduceResponse dla pozostałych endpointów
         public async Task<ActionResult> Delete(int id)
         {
-            var post = await context.Questions.FindAsync(id);
+            var post = await repository.GetAsync(id); //?? czy w praktyce tak się robi, czy raczej od razu próbować usunąć dla lepszej wydajności?
             if (post == null)
             {
-                logger.LogWarning("Element with givrn ID doesn't exist - nothing is deleted");
+                logger.LogWarning("Element with given ID doesn't exist - nothing is deleted");
                 return NoContent();
             }
 
-            context.Remove(post);
-            await context.SaveChangesAsync();
+            await repository.DeleteAsync(id);
             logger.LogInformation("Element with given ID has been successfully removed");
             return NoContent(); //[Note] Jak zwrócić element usunięty? Ma być wtedy zwracany status OK z obiektem? [OK + obiekt]
         }
