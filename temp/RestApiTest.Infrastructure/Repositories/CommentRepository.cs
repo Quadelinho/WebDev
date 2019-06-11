@@ -69,7 +69,7 @@ namespace RestApiTest.Infrastructure.Repositories
         {
             if (objectToUpdate == null)
             {
-                throw new BlogPostsDomainException("Update failed - empty source object");
+                throw new InvalidOperationException("Update failed - empty source object");
             }
 
             Comment comment = await context.PostComments.FindAsync(objectToUpdate.Id);

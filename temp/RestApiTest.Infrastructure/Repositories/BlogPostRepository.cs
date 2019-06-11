@@ -3,6 +3,7 @@ using RestApiTest.Core.Interfaces;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
 using RestApiTest.Infrastructure.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -56,7 +57,7 @@ namespace RestApiTest.Core.Repositories
         {
             if (objectToUpdate == null)
             {
-                throw new BlogPostsDomainException("Update failed - empty source object");
+                throw new InvalidOperationException("Update failed - empty source object");
             }
 
             bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToUpdate.Title && p.Id != objectToUpdate.Id) != null; //?? Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?

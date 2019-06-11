@@ -55,7 +55,7 @@ namespace RestApiTest.Core.Models
     } //
 
 
-    //TODO: Interfejs do repo (implementacja async)
+    //TODO: Pozostałe interfejsy do repo (implementacja async)
     //[Done] Zastanowić się nad kolejnymi modelami, żeby to skomplikować (np. komentarze, oceny, autorzy, zapytania, artykuły, grafiki, ankiety, raporty i statystyki, subskrybenci, newsy)
     //[NOTE] - po zmianach w modelu trzeba wywołać komendę aktualizującą bazę -> albo z poziomu VS przez Package Manager Console wywołać 'Database-Update', albo uruchomić systemową konsolę , przejść do lokalizacji danego pliku csproj i wywołać komendę 'dotnet ef database update', albo podając opcję --project podać ścieżkę do pliku projektu
         //żeby powstała nowa migracja z określoną zmianą trzeba wywołać komendę: dotnet ef migrations add "nazwa migracji"

@@ -16,7 +16,7 @@ namespace RestApiTest.Controllers
     public class BlogController : ControllerBase
     {
         private IBlogPostRepository repository;
-        ILogger<BlogController> logger;
+        private ILogger<BlogController> logger;
 
         public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment)
         {
@@ -114,21 +114,22 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult> Put(long id, [FromBody] BlogPost updatedPost)
         {
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
-            var post = await repository.GetAsync(updatedPost.Id);
-            if(post == null)
+            try
+            {
+                await repository.UpdateAsync(updatedPost);
+            }
+            catch (InvalidOperationException) //?? Czy muszę osobno przechwytywać wyjątek z duplikacją tytułu i zwracać wtedy 409, czy coś innego?
             {
                 logger.LogWarning("There was nothing to update");
                 return NotFound(id);
-                //throw new BlogPostsDomainException("There is no post with given id");
             }
-            post.Title = updatedPost.Title;
 //            post.Modified = DateTime.Now.ToLongDateString();
 
             //try //[Note] raczej nie ma potrzeby używać tu try-catch -> zazwyczaj w web dev'ie stosuje się podejście global exception handler'a
              //Użyć Update, żeby nie zmieniać całego kontekstu
             
-            //?? Co tu ma być zwrócone, żeby było zgodne z HATEOS'em (żeby zwróciło w responsie url'a?)
-            return Ok(post);//Może być NoContent
+            //?? Co tu ma być zwrócone, żeby było zgodne z HATEOS'em (żeby zwróciło w responsie url'a?) - to co w Post?
+            return Ok(updatedPost);//Może być NoContent
         }
 
         // DELETE api/blog/5
