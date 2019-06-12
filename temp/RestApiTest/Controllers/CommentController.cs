@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Controllers
 {
-    //?? Czy jest jakiś sposób na uogólnienie kontrolerów i czy w ogóle się coś takiego stosuje? (Bo one są bardzo podobne)
+    //[Note] - raczej się nie stosuje generalizacji w tym kontekście - Czy jest jakiś sposób na uogólnienie kontrolerów i czy w ogóle się coś takiego stosuje? (Bo one są bardzo podobne)
     [Route("api/[controller]")]
     [ApiController]
     public class CommentController : ControllerBase
@@ -72,9 +72,10 @@ namespace RestApiTest.Controllers
                 logger.LogWarning("There was nothing to update");
                 return NotFound(id);
             }
-            return Ok(updatedComment); //?? Zwracać ten updatedComment, czy raczej powinienem zwracać z repo obiekt na nowo zaczytany z bazy 
-                                        //(żeby np. wyeliminować przekłamanie, gdyby coś zostało ustawione na bazie inaczej)?
+            return Ok(updatedComment); //[Note] - zwracać zawsze aktualny status z bazy - Zwracać ten updatedComment, czy raczej powinienem zwracać z repo obiekt na nowo zaczytany z bazy 
+                                        //(żeby np. wyeliminować przekłamanie, gdyby coś zostało ustawione na bazie inaczej)? //TODO: zwracać obiekt bazy z repo
         }
+        //[Note] aktualizacja tylko jednego pola - metoda patch
 
         // DELETE api/comment/5
         [HttpDelete("{id}")]
@@ -91,10 +92,10 @@ namespace RestApiTest.Controllers
 
             await repository.DeleteAsync(id);
             logger.LogInformation("Element with given ID has been successfully removed");
-            return NoContent();
+            return Ok();
         }
 
-        [HttpGet("{id}", Name = "GetAllCommentsForPost")] //?? Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać?
+        [HttpGet("/{id}/", Name = "GetAllCommentsForPost")] //?? Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //TODO: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza)
         [ProducesResponseType(typeof(IEnumerable<Comment>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<Comment>>> GetAllCommentsForPost(long postId)
@@ -108,18 +109,18 @@ namespace RestApiTest.Controllers
             }
             else
             {
-                logger.LogWarning("No comments to return");
+                //logger.LogInfo("No comments to return");
                 return NoContent();
             }
         }
 
-        [HttpGet("{id}", Name = "GetAllCommentsForUser")] //?? Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać?
+        [HttpGet("{id}", Name = "GetAllCommentsForUser")]
         [ProducesResponseType(typeof(IEnumerable<Comment>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<Comment>>> GetAllCommentsForUser(long userId)
         {
             logger.LogInformation("Calling get for all comments of given user");
-            var comments = await repository.GetAllCommentsForUser(userId);
+            var comments = await repository.GetAllCommentsForUser(userId); 
             long? count = comments?.Count();
             if (count.HasValue && count.Value > 0)
             {
@@ -127,7 +128,7 @@ namespace RestApiTest.Controllers
             }
             else
             {
-                logger.LogWarning("No comments to return");
+                //logger.LogWarning("No comments to return"); //TODO: logowanie dla debug'a tego typu wpisów zbędnych
                 return NoContent();
             }
         }

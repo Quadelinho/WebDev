@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
 {
-    public class CommentRepository : ICommentRepository //IBaseRepository<Comment> //?? Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
+    public class CommentRepository : ICommentRepository //IBaseRepository<Comment> //[Note] - konkretny, nie base, nawet gdyby miał być pusty - Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
     {
         private ForumContext context;
 
@@ -35,29 +35,29 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 context.PostComments.Remove(comment);
                 await context.SaveChangesAsync();
-            }
+            }//TODO: bool czy się udało, czy nie
         }
 
         public async Task<IEnumerable<Comment>> GetAllCommentsForPost(long commentedPostId)
         {
-            BlogPost relatedPost = await context.Posts.FindAsync(commentedPostId); //?? czy to da radę znaleźć też obiekty klasy pochodnej?
+            BlogPost relatedPost = await context.Posts.FindAsync(commentedPostId); //?? czy to da radę znaleźć też obiekty klasy pochodnej? //TODO: Sprawdzić
             if(relatedPost == null)
             {
                 throw new BlogPostsDomainException("Getting all post's comments failed - no post with given id exists");
             }
 
-            return relatedPost.Comments; //?? Czy zwraca się tak, czyyteż powinienem wykonać operację na kontekście? Czy to sam framework ogarnie właśnie tak jak zrobiłem
+            return relatedPost.Comments; //[Note] - lepiej na kontekście, żeby nie było dwukrotnie wykonywanych strzałów na bazę - Czy zwraca się tak, czy też powinienem wykonać operację na kontekście? Czy to sam framework ogarnie właśnie tak jak zrobiłem
         }
 
         public async Task<IEnumerable<Comment>> GetAllCommentsForUser(long authorId)
         {
-            ForumUser author = await context.Users.FindAsync(authorId);
+            ForumUser author = await context.Users.FindAsync(authorId); //TODO: sprawdzić czy nie jest potrzebny include, żeby zaciągnąć referencje
             if (author == null)
             {
-                throw new BlogPostsDomainException("Getting all user's comments failed - no user with given id exists"); //?? W takich sytuacjach w praktyce rzuca się wyjątki, czy zwraca po prostu pustą kolekcję?
+                throw new BlogPostsDomainException("Getting all user's comments failed - no user with given id exists"); //[Note] - z kontrolera lepiej zwrócić NoContent W takich sytuacjach w praktyce rzuca się wyjątki, czy zwraca po prostu pustą kolekcję? //TODO: najlepiej zdefiniować wyjątek domenowy, że nie ma niczego do zwrócenia i obsługiwać to w global exception handler'ze zwracając NoContent
             }
 
-            return author.UsersComments;
+            return author.UsersComments; //TODO: Sprawdzić co będzie lepsze (sprawdzić query)
         }
 
         public async Task<Comment> GetAsync(long id)
@@ -82,6 +82,8 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 throw new BlogPostsDomainException("Update comment failed - no object for update");
             }
+            //TODO: repo powinno zwracać queryable
+            //TODO: [optional] - implementacja IbaseRepo
         }
     }
 }

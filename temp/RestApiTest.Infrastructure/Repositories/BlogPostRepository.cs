@@ -18,11 +18,11 @@ namespace RestApiTest.Core.Repositories
             this.context = context;
         }
 
-        public async Task AddAsync(BlogPost objectToAdd) //?? czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
+        public async Task AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
             if(objectToAdd == null)
             {
-                throw new BlogPostsDomainException("Failed to insert the post - empty entry"); //?? czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
+                throw new ArgumentNullException("Failed to insert the post - empty entry, blogPost"); //[Note] - skoro to metoda publiczna, to lepiej robić walidację danych wejściowych też na tym etapie, nawet jeśli miałyby być zwielokrotnione te walidacje - czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
                                                                                                     //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
             }
 
@@ -59,8 +59,8 @@ namespace RestApiTest.Core.Repositories
             {
                 throw new InvalidOperationException("Update failed - empty source object");
             }
-
-            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToUpdate.Title && p.Id != objectToUpdate.Id) != null; //?? Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
+            //TODO: drugie query z Where do porównania
+            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToUpdate.Title && p.Id != objectToUpdate.Id) != null; //[Note] - at this point First, but it can be changed in future implementations of the framework - Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
             if (isTitleDuplicate)
             {
                 throw new BlogPostsDomainException("Update failed - the post with given title already exists");
@@ -119,7 +119,8 @@ namespace RestApiTest.Core.Repositories
                 }
                 relatedObject?.RemoveReferenceToVote(voteToRemove.Id);
                 context.Remove(voteToRemove);
-                await context.SaveChangesAsync(); //?? Czy tutaj usuwając Vote'a muszę też zaktualizować powiązany z nim obiekt, czy EF sam to już ogarnie w context'cie?
+                await context.SaveChangesAsync(); //[Note] - potencjalnie tak, bo inacej EF domyślnie może się wywalić - Czy tutaj usuwając Vote'a muszę też zaktualizować powiązany z nim obiekt, czy EF sam to już ogarnie w context'cie?
+//TODO: repo vote'ów powinno usuwać zależności wcześniej, a całość ma yć wyowłana przez service
             }
         }
     }
