@@ -12,7 +12,7 @@ namespace RestApiTest.Core.Models
         public string Title { get; set; }
         public string Content { get; set; }
         public DateTime SentDate { get; set; }
-        public DateTime? Modified { get; set; } //[Note] Trzeba mieć na uwadze, że metody post niekoniecznie będą aktualizować wszystko, tylko np. określone pole (jak status), w takim wypadku wartość powinna być nullowalna
+        public DateTime Modified { get; set; } //[Note] Trzeba mieć na uwadze, że metody post niekoniecznie będą aktualizować wszystko, tylko np. określone pole (jak status), w takim wypadku wartość powinna być nullowalna
         public bool Approved { get; set; }
         public IEnumerable<Comment> Responses { get; set; } //[Note]!!!!!: Do kolekcji reprezentujących zapytania na bazie najlepiej używać IQueryable -> IEnumerable jest optymalizowane dla odpytywania kolekcji w pamięci (wykonuje select'a po stronie serwera, a potem dopiero filtruje dane PO ZAŁADOWANIU PO STRONIE KLIENTA). IQueryable wykonuje pełne filtrowanie po stronie serwera. [source: https://www.c-sharpcorner.com/UploadFile/a20beb/ienumerable-vs-iqueryable-in-linq/]
         public bool IsRecommendedSolution { get; set; }

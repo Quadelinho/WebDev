@@ -95,7 +95,8 @@ namespace RestApiTest.Controllers
             return Ok();
         }
 
-        [HttpGet("/{id}/", Name = "GetAllCommentsForPost")] //?? Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //TODO: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza)
+        //?? Nie widzi tutaj nazwy controller'a automatycznie - jeśli nie podałem poniżej jawnie /comment/ to metoda była wywoływana przy wywołaniu get z BlogPost/id
+        [HttpGet("/comment/{id}/", Name = "GetAllCommentsForPost")] //?? Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //TODO: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza)
         [ProducesResponseType(typeof(IEnumerable<Comment>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<Comment>>> GetAllCommentsForPost(long postId)

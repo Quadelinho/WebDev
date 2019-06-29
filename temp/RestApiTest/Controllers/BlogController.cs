@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
+using RestApiTest.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,14 +19,16 @@ namespace RestApiTest.Controllers
     {
         private IBlogPostRepository repository;
         private ILogger<BlogController> logger;
+        private IMapper mappingProvider; //?? Jak ma być przekazany konfig mappera do użycia w kontrolerze?
 
-        public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment)
+        public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment, IMapper mapper)
         {
             logger = log;
             //Slogger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" });
             this.repository = repository;
-            var posts = repository.GetAllBlogPostsAsync();
-            if (posts == null || posts.Result.Count() == 0)
+            mappingProvider = mapper;
+            var posts = repository.GetAllBlogPostsAsync()/*ToAsyncEnumerable().*/; //?? Jak to powinno wyglądać, bo cały czas dostaję błąd konwersji przy wywołaniu count
+            if (posts == null || posts.Count() == 0)
             {
                 var sampleData = CreateSampleData(5);
                 foreach (var post in sampleData)
@@ -56,15 +60,19 @@ namespace RestApiTest.Controllers
         //GET api/blog/5
         [HttpGet("{id}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
                                             //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //[??]Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
-        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status200OK)] //[Note - DTO] Czy dla dokumentacji Swagger'a podaje się jako typ zwracany obiekty DTO, czy rzeczywistej klasy?
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<BlogPost>> Get(long id)
+        public async Task<ActionResult<BlogPostDTO>> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
+
+           // IMapper mapper = mappingProvider.ConfigurationProvider.CreateMapper(); //TODO: używać tylko tego mappingProvider bezpośrednio
+
             BlogPost post = await repository.GetAsync(id);
             if (post != null)
             {
-                return Ok(post);
+                var destination = mappingProvider.Map<BlogPost, BlogPostDTO>(post); //??  Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
+                return Ok(destination);
             }
             else
             {
@@ -83,7 +91,7 @@ namespace RestApiTest.Controllers
         {
             //?? Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielone na osobne metody
             logger.LogInformation("Calling get for all posts");
-            var posts = await repository.GetAllBlogPostsAsync(); //?? Jak tutaj się robi jakieś "porcjowanie", albo coś w rodzaju yield'a, żeby nie pchać dużej paczki w response'ie/ //TODO: AsyncEnumerable
+            var posts = /*await*/ repository.GetAllBlogPostsAsync(); //?? Jak tutaj się robi jakieś "porcjowanie", albo coś w rodzaju yield'a, żeby nie pchać dużej paczki w response'ie/ //TODO: AsyncEnumerable
             //TODO: repo powinno tutaj zwracać IQueryable
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
@@ -117,6 +125,8 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status409Conflict)]
         public async Task<ActionResult> Put(long id, [FromBody] BlogPost updatedPost)
         {
+            //TODO: zwracać zawsze stan aktualny z bazy, a nie obiekt z parametrów
+            //TODO: w controller'ach używać DTO
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
             try
             {
@@ -183,6 +193,6 @@ namespace RestApiTest.Controllers
 //TODO: usunąć nullable z encji w Core.Models
 //TODO: Implementacja DTO dla kontrolerów, mają mieć pola nullowalne. DTO ma nie mieć pola 'ModifiedDate' //[Note] - DTO i encje są modelami danych, ale DTO jest uproszczony, na poziomie tylko kontrolera, a encja jest modelem pełnym, domenowym
 //TODO: dodać w kontrolerach implementację akcji patch dla aktualizacji tylko określonych pól, jeśli nie są nullami
-//TODO: dodać automapper'a - mapowanie pól DTO na pola encji
+//[Done]: dodać automapper'a - mapowanie pól DTO na pola encji
 //TODO: wyszukiwanie postów po tytule
 //TODO: pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)

@@ -15,12 +15,18 @@ namespace RestApiTest.Core.Models
         public string Content { get; set; }
 
         [StringLength(25, MinimumLength = 3)]
-        public ForumUser Author { get; set; }
+        public ForumUser Author { get; set; } //[Note] AutoMapper jest w stanie to ogarnąć, jeśli ma zdefiniowane w konfiguracji mapowanie obiektu tej klasy - wtedy w odpowiednim mapowanym obiekcie (np. BlogPostDTO) z automatu zamieniłby referencję do ForumUsers na właściwości określone w obiekcie ForumUserDTO
+                                                //TODO: Sprawdzić, czy jeśli AutoMapper nie miałby zdefiniowanego mapowania na ForumUserDTO (ani nic w ogóle dla ForumUser, to czy wstawiłby tu właściwości klasy ForumUser?
+                                                //TODO: Sprawdzić, jak by się zachował przy takim automatycznym mapowaniu typów zagnieżdżonych, gdyby taki typ wewnętrzny miał właściwość o takiej samej nazwie jak nadrzędny (np. Title z posta i Title z Comment)?
+                                                //[Note - potencjalnie trzeba skonfigurować - sprawdzić.] Skoro AutoMapper ogarnia z automatu zmienne referencyjne wstawiając pola, to co zrobi dla listy obiektów (np. Comments)?
 
         //[Note] .net core nie obsługuje domyślnych wartości getter'ów
-        //?? Czy da się jakoś oznaczyć pole, żeby nie było podawane w body? Czy w ogóle tak się robi, czy w praktyce się tego nie określa, 
+        //[Note] - rozwiązuje się to sotosując wzorzec DTO (Data Transfer Objects), żeby uproszczone obiekty z nullowalnymi właściwościami mogły być definiowane do przekazywania minimalnej ilości niezbędnych danych - Czy da się jakoś oznaczyć pole, żeby nie było podawane w body? Czy w ogóle tak się robi, czy w praktyce się tego nie określa, 
             //a po prostu takie "automatyczne pola" jak np. modified po prostu i tak się zawsze nadpisuje z poziomu kodu?
-        public DateTime? Modified { get; set; } //= DateTime.Now.ToLongDateString(); //?? Zmiana typu pola nie została wykryta przez komendę Update-Database jako modyfikacja do utowrzenia migracji
+        public DateTime Modified //{ get; set; } //= DateTime.Now.ToLongDateString(); //?? Zmiana typu pola nie została wykryta przez komendę Update-Database jako modyfikacja do utowrzenia migracji
+        {
+            get; //TODO: ustawianie Modified zrobić na triggerach w bazie i getter'ami zawsze zwracać aktualny stan z bazy //[Note] - bezpośrednio w migracjach raczej nie, trzeba to osobno manualnie zdefiniować - Czy tego typu elementy jak triggery da się też odzwierciedlić w tych plikach tworzących migracje bazy? 
+        }
         public ICollection<Comment> Comments { get; set; }
         public ICollection<Vote> Votes { get; set; } //TODO: przerobić like'i na Event Sourcing. Przerobić na model Vote (tabela z poszczególnymi informacjami [Note] - pozwala w razie czego odtworzyć stan np.
 

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Core.Interfaces.Repositories
 {
-    public interface IQuestionPostRepository : IBlogPostRepository
+    public interface IQuestionPostRepository //: IBlogPostRepository
     {
         Task<Tag> AddTagAsync(Tag tagToAdd, BlogPost relatedPost);
         Task<Tag> RemoveTagAsync(long id, BlogPost relatedPost);

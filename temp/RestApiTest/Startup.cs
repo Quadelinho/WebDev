@@ -1,18 +1,26 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RestApiTest.Core.Interfaces.Repositories;
+using RestApiTest.Core.Models;
+using RestApiTest.Infrastructure.Repositories;
+using RestApiTest.DTO;
 using RestApiTest.Infrastructure.Data;
 using Swashbuckle.AspNetCore.Swagger;
+using System;
+using System.Collections.Generic;
 
 namespace RestApiTest
 {
     public class Startup
     {
         private readonly ILogger<ForumContext> logger;
+        private /*readonly*/ IMapper mapper;
 
         //?? Coś tu nie gra z docker'em - bez zmian czasem działa, a innym razem w ogóle nie reaguje na ten projekt (choć hello-world odpowiada i nie zgłasza nic żadneego błędu)
 
@@ -34,7 +42,13 @@ namespace RestApiTest
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            //[Note] - te kolejne metody umożliwiające rejestrowanie kolejnych usług są uzyskiwane na zasadzie mechanizmu zwanego "fluent interfaces"
+                //Każdy pakiet dodaje swoje extensiony do namespace'a frameworkowego (np. System.Collections) i wtedy każda klasa, która w using'u poda ten pakiet widzi wszystkie to rozszerzenia
             services.AddSingleton<IConfiguration>(Configuration);
+            services.AddTransient<IBlogPostRepository, BlogPostRepository>();  //[Note] - może przez dziedziczenie po wspólnych interface'ach, bo normalnie powinno to działać bez jawnej deklaracji - Dlaczego muszę wszystkie te repozytoria rejestrować jawnie dla DI?
+            services.AddTransient<ICommentRepository, CommentRepository>();
+            ConfigureAutoMapper();
+            services.AddSingleton<IMapper>(mapper);
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             //services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BlogPostDB_01"));
@@ -59,6 +73,8 @@ namespace RestApiTest
                     Contact = new Contact { Name = "Test User", Email = "test@niepodam.pl" }
                 });
             });
+            //services.AddAutoMapper(); //[Note] - Trzeba zainstalować pakiet nuget'owy AutoMapper.Extensions.Microsoft.DependencyInjection W necie była informacja, żeby zarejestrować AutoMappera tutaj taką metodą. Czy teraz już nie jest to potrzebne, czy jeszcze czegoś mi brakuje?(https://medium.com/ps-its-huuti/how-to-get-started-with-automapper-and-asp-net-core-2-ecac60ef523f)
+            //?? Ta metoda rejestracji AutoMappera jest oznaczona jako obsolate;
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -90,7 +106,26 @@ namespace RestApiTest
                 c.RoutePrefix = string.Empty; // serve the Swagger UI at the app's root //[Note] Dodanie tego wpisu powoduje, że zawsze jeśli zostanie podany "pusty" url (np. tylko localhost + port), bez konkretnego wywołania - z automatu zostanie wyświetlona strona z dokumentacją API
             });
         }
+
+        private void ConfigureAutoMapper()
+        {
+            var mapperConfig = new MapperConfiguration(cfg => 
+            {   //[Note - po refleksjach] Jak działa AutoMapper od środka - robi jakieś dziedziczenie / interfejsy, czy po refleksji? Jaki to ma wpływ na wydajność w praktyce?
+                //?? Czy użycie przeładowania z MemberList np. Source, powoduje, że mapowany obiekt będzie walidowany pod kątem zawierania wszystkich pól z obiektu Source?
+                //Przykład definiowania mapowania innego niż domyślne
+                //cfg.CreateMap<BlogPost, BlogPostDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)); //[Note] - powinno wystarczyć tylko to uszczegółowione (skoro zostało zdefiniowane uszczegółowienie, to ogół będzie domyślnie) - Czy jeśli mam jakieś propertiesy zdefiniowane osobno, to muszę wtedy dodać mapę od tych standardowych nazwanych jednakowo? 
+                cfg.CreateMap<BlogPost, BlogPostDTO>();
+                //cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id));
+                cfg.CreateMap<Comment, CommentDTO>();
+                cfg.CreateMap<ForumUser, ForumUserDTO>(); //TODO: Skończyć mapowanie (wszystkie te typy muszą być zdefiniowane)
+                cfg.CreateMap<NewsMessage, NewsMessageDTO>();
+                cfg.CreateMap<Core.Models.Tag, TagDTO>();
+                cfg.CreateMap<Vote, VoteDTO>().ReverseMap();
+                //[Note - reverse] Czy mam definiować 2 wpisy dla AutoMapper'a, żeby było możliwe mapowanie w obie strony (bo np. get powinien mapować odpowiedź repo na DTO, a post powinien mapować DTO na obiekt modelowy)
+            });
+
+            //IMapper mapper = mapperConfig.CreateMapper();
+            mapper = mapperConfig.CreateMapper();
+        }
     }
 }
-
-//DONE: dodać logowanie w endpointach ??Serilog

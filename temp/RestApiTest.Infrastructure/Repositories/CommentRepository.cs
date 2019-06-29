@@ -83,7 +83,6 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Update comment failed - no object for update");
             }
             //TODO: repo powinno zwracać queryable
-            //TODO: [optional] - implementacja IbaseRepo
         }
     }
 }

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RestApiTest.Core.Repositories
+namespace RestApiTest.Infrastructure.Repositories
 { //[Note] - nie nie, musi. - Czy każda klasa modelu musi / powinna mieć swoje pokrycie w klasie Repository,czy np. operacje na komentarzach mogą być z poziomu BlogPostRepository (bo komentarze nie mogą przecież być procesowane samodzielnie, w oderwaniu od postów)
     public class BlogPostRepository : IBlogPostRepository
     {
@@ -20,10 +20,10 @@ namespace RestApiTest.Core.Repositories
 
         public async Task AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
-            if(objectToAdd == null)
+            if (objectToAdd == null)
             {
                 throw new ArgumentNullException("Failed to insert the post - empty entry, blogPost"); //[Note] - skoro to metoda publiczna, to lepiej robić walidację danych wejściowych też na tym etapie, nawet jeśli miałyby być zwielokrotnione te walidacje - czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
-                                                                                                    //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
+                                                                                                      //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
             }
 
             bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
@@ -39,14 +39,18 @@ namespace RestApiTest.Core.Repositories
         public async Task DeleteAsync(long id)
         {
             BlogPost postToRemove = await context.Posts.FindAsync(id);
-            if(postToRemove != null)
+            if (postToRemove != null)
             {
                 context.Posts.Remove(postToRemove);
                 await context.SaveChangesAsync();
             }
         }
 
-        public async Task</*IAsyncEnumerable*/IEnumerable<BlogPost>> GetAllBlogPostsAsync() => (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable();
+        //[Note] - tak, IAsyncEnumerable ma wewnątrz taski i yeld'a, więc samo użycie tego typu już oznacza async'a - Czy jeśli chcę używać IAsyncEnumerable, które ma taski wewnątrz, to znaczy, że samej metody już nie mogę oznaczyć jako async
+        public /*async*/ /*Task<*/IEnumerable<BlogPost> GetAllBlogPostsAsync() //=> (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable(); //?? Nie widzi kolekcji Posts z context'u (czy jeszcze czegoś mi brakuje w konfiguracji EF)?
+        {
+            return /*await*/ context.Posts.ToList();
+        }
 
         public async Task<BlogPost> GetAsync(long id)
         {
@@ -106,7 +110,7 @@ namespace RestApiTest.Core.Repositories
         public async Task RemoveMarkAsync(long id)
         {
             Vote voteToRemove = await context.Votes.FindAsync(id);
-            if(voteToRemove != null)
+            if (voteToRemove != null)
             {
                 IVotable relatedObject = null;
                 if (voteToRemove.VotedPost != null)
@@ -120,7 +124,7 @@ namespace RestApiTest.Core.Repositories
                 relatedObject?.RemoveReferenceToVote(voteToRemove.Id);
                 context.Remove(voteToRemove);
                 await context.SaveChangesAsync(); //[Note] - potencjalnie tak, bo inacej EF domyślnie może się wywalić - Czy tutaj usuwając Vote'a muszę też zaktualizować powiązany z nim obiekt, czy EF sam to już ogarnie w context'cie?
-//TODO: repo vote'ów powinno usuwać zależności wcześniej, a całość ma yć wyowłana przez service
+                                                  //TODO: repo vote'ów powinno usuwać zależności wcześniej, a całość ma być wyowłana przez service
             }
         }
     }
