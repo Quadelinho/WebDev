@@ -12,3 +12,4 @@ namespace RestApiTest.DTO
         //?? Comments i Votes raczej nie są potrzebne w DTO BlogPost?
     }
 }
+//TODO: zdefiniować elementy wymagane

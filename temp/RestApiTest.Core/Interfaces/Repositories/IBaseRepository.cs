@@ -1,13 +1,16 @@
-﻿using System.Threading.Tasks;
+﻿using RestApiTest.Core.DTO;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace RestApiTest.Core.Interfaces.Repositories
 {
     public interface IBaseRepository<T> where T : class
     {
-        Task AddAsync(T objectToAdd);
+        Task<T> AddAsync(T objectToAdd);
         Task DeleteAsync(long id);
-        Task UpdateAsync(T objectToUpdate);
+        Task<T> UpdateAsync(T objectToUpdate);
         Task<T> GetAsync(long id);
+        Task<T> ApplyPatchAsync(T objectToModify, List<PatchDTO> propertiesToUpdate);
         //TODO: dodać też dla all - repo może mieć, ukryć w kontrolerze
     }
 }

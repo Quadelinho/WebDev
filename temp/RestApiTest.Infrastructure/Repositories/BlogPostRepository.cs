@@ -1,4 +1,5 @@
-﻿using RestApiTest.Core.Exceptions;
+﻿using RestApiTest.Core.DTO;
+using RestApiTest.Core.Exceptions;
 using RestApiTest.Core.Interfaces;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
@@ -18,7 +19,7 @@ namespace RestApiTest.Infrastructure.Repositories
             this.context = context;
         }
 
-        public async Task AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
+        public async Task<BlogPost> AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
             if (objectToAdd == null)
             {
@@ -34,6 +35,7 @@ namespace RestApiTest.Infrastructure.Repositories
 
             await context.Posts.AddAsync(objectToAdd); //?? Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
             await context.SaveChangesAsync();
+            return objectToAdd;
         }
 
         public async Task DeleteAsync(long id)
@@ -47,9 +49,9 @@ namespace RestApiTest.Infrastructure.Repositories
         }
 
         //[Note] - tak, IAsyncEnumerable ma wewnątrz taski i yeld'a, więc samo użycie tego typu już oznacza async'a - Czy jeśli chcę używać IAsyncEnumerable, które ma taski wewnątrz, to znaczy, że samej metody już nie mogę oznaczyć jako async
-        public /*async*/ /*Task<*/IEnumerable<BlogPost> GetAllBlogPostsAsync() //=> (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable(); //?? Nie widzi kolekcji Posts z context'u (czy jeszcze czegoś mi brakuje w konfiguracji EF)?
+        public /*async*/ /*Task<*//*IEnumerable*/IQueryable<BlogPost> GetAllBlogPostsAsync() //=> (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable();
         {
-            return /*await*/ context.Posts.ToList();
+            return /*await*/ context.Posts;//.ToList();
         }
 
         public async Task<BlogPost> GetAsync(long id)
@@ -57,28 +59,35 @@ namespace RestApiTest.Infrastructure.Repositories
             return await context.Posts.FindAsync(id);
         }
 
-        public async Task UpdateAsync(BlogPost objectToUpdate)
+        public async Task<BlogPost> UpdateAsync(BlogPost objectToUpdate)
         {
             if (objectToUpdate == null)
             {
                 throw new InvalidOperationException("Update failed - empty source object");
             }
             //TODO: drugie query z Where do porównania
-            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToUpdate.Title && p.Id != objectToUpdate.Id) != null; //[Note] - at this point First, but it can be changed in future implementations of the framework - Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
-            if (isTitleDuplicate)
-            {
-                throw new BlogPostsDomainException("Update failed - the post with given title already exists");
-            }
+            ThrowOnTitleDuplication(objectToUpdate.Title, objectToUpdate.Id);
 
             BlogPost post = await context.Posts.FindAsync(objectToUpdate.Id);
             if (post != null)
             {
+                post.UpdateModifiedDate();
                 context.Entry(post).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
                 await context.SaveChangesAsync(); //?? Było polecane użycie update, żeby nie zmieniać całego kontekstu, ale nie ma update'u asynchronicznego
+                return post;//?? Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności?
             }
             else
             {
                 throw new BlogPostsDomainException("Update failed - no post to update");
+            }
+        }
+
+        private void ThrowOnTitleDuplication(string titleToCheck, long sourcePostId)
+        {
+            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == titleToCheck && p.Id != sourcePostId) != null; //[Note] - at this point First, but it can be changed in future implementations of the framework - Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
+            if (isTitleDuplicate)
+            {
+                throw new BlogPostsDomainException("Update failed - the post with given title already exists");
             }
         }
 
@@ -126,6 +135,25 @@ namespace RestApiTest.Infrastructure.Repositories
                 await context.SaveChangesAsync(); //[Note] - potencjalnie tak, bo inacej EF domyślnie może się wywalić - Czy tutaj usuwając Vote'a muszę też zaktualizować powiązany z nim obiekt, czy EF sam to już ogarnie w context'cie?
                                                   //TODO: repo vote'ów powinno usuwać zależności wcześniej, a całość ma być wyowłana przez service
             }
+        }
+
+        public async Task<BlogPost> ApplyPatchAsync(BlogPost objectToModify, List<PatchDTO> propertiesToUpdate)
+        {
+            var properties = propertiesToUpdate.ToDictionary(p => p.PropertyName, p => p.PropertyValue);
+            if(properties.ContainsKey("Modified"))
+            {
+                throw new InvalidOperationException("Attempt to apply patch to restricted property");
+            }
+            if(properties.ContainsKey("Title"))
+            {
+                ThrowOnTitleDuplication(objectToModify.Title, objectToModify.Id);
+            }
+
+            var entityEntry = context.Entry(objectToModify);
+            entityEntry.CurrentValues.SetValues(properties); //[Note] Metoda SetValues ma przydatne przeładowanie, pozwalające przekazać cały obiekt - wówczas wszystkie właściwości o takich samych nazwach zostaną przekopiowane (pozwala to z automatu używać np. obiektów DTO)
+            entityEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified; //?? Na necie widziałem, że definiują ten stan - czy to jakoś przyspiesza operacje, czy jest nadmiarowe, czy może tylko w celach informacyjncyh dla zachowania spójności danych?
+            await context.SaveChangesAsync();
+            return entityEntry.Entity;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using RestApiTest.Core.Exceptions;
+﻿using RestApiTest.Core.DTO;
+using RestApiTest.Core.Exceptions;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
 using RestApiTest.Infrastructure.Data;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
 {
-    public class CommentRepository : ICommentRepository //IBaseRepository<Comment> //[Note] - konkretny, nie base, nawet gdyby miał być pusty - Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
+    public class CommentRepository : ICommentRepository //[Note] - konkretny, nie base, nawet gdyby miał być pusty - Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
     {
         private ForumContext context;
 
@@ -17,7 +18,7 @@ namespace RestApiTest.Infrastructure.Repositories
             this.context = context;
         }
 
-        public async Task AddAsync(Comment objectToAdd)
+        public async Task<Comment> AddAsync(Comment objectToAdd)
         {
             if(objectToAdd == null)
             {
@@ -26,6 +27,12 @@ namespace RestApiTest.Infrastructure.Repositories
 
             await context.PostComments.AddAsync(objectToAdd);
             await context.SaveChangesAsync();
+            return objectToAdd;
+        }
+
+        public Task<Comment> ApplyPatchAsync(Comment objectToModify, List<PatchDTO> propertiesToUpdate)
+        {
+            throw new NotImplementedException();
         }
 
         public async Task DeleteAsync(long id)
@@ -65,7 +72,7 @@ namespace RestApiTest.Infrastructure.Repositories
             return await context.PostComments.FindAsync(id);
         }
 
-        public async Task UpdateAsync(Comment objectToUpdate)
+        public async Task<Comment> UpdateAsync(Comment objectToUpdate)
         {
             if (objectToUpdate == null)
             {
@@ -77,6 +84,7 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 context.Entry(comment).CurrentValues.SetValues(objectToUpdate);
                 await context.SaveChangesAsync();
+                return comment;
             }
             else
             {

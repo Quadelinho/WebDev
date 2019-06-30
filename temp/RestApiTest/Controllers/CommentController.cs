@@ -96,7 +96,7 @@ namespace RestApiTest.Controllers
         }
 
         //?? Nie widzi tutaj nazwy controller'a automatycznie - jeśli nie podałem poniżej jawnie /comment/ to metoda była wywoływana przy wywołaniu get z BlogPost/id
-        [HttpGet("/comment/{id}/", Name = "GetAllCommentsForPost")] //?? Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //TODO: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza)
+        [HttpGet("/posts/{id}/comments/", Name = "GetAllCommentsForPost")] //[Note] Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //Done: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza) - dokumentacja: https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-2.2#attribute-routing
         [ProducesResponseType(typeof(IEnumerable<Comment>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<Comment>>> GetAllCommentsForPost(long postId)
@@ -115,7 +115,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        [HttpGet("{id}", Name = "GetAllCommentsForUser")]
+        [HttpGet("/users/{id}/comments/", Name = "GetAllCommentsForUser")]
         [ProducesResponseType(typeof(IEnumerable<Comment>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<Comment>>> GetAllCommentsForUser(long userId)
