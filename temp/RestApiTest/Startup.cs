@@ -117,7 +117,7 @@ namespace RestApiTest
                 cfg.CreateMap<BlogPost, BlogPostDTO>().ReverseMap();
                 //cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id));
                 cfg.CreateMap<Comment, CommentDTO>().ReverseMap();
-                cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap(); //TODO: Skończyć mapowanie (wszystkie te typy muszą być zdefiniowane)
+                cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap();
                 cfg.CreateMap<NewsMessage, NewsMessageDTO>().ReverseMap();
                 cfg.CreateMap<Core.Models.Tag, TagDTO>().ReverseMap();
                 cfg.CreateMap<Vote, VoteDTO>().ReverseMap();

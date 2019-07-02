@@ -62,7 +62,7 @@ namespace RestApiTest.Controllers
         [HttpGet("{id}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
                                             //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //[??]Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status200OK)] //[Note - DTO] Czy dla dokumentacji Swagger'a podaje się jako typ zwracany obiekty DTO, czy rzeczywistej klasy?
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<BlogPostDTO>> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
@@ -72,8 +72,8 @@ namespace RestApiTest.Controllers
             BlogPost post = await repository.GetAsync(id);
             if (post != null)
             {
-                var destination = mappingProvider.Map<BlogPost, BlogPostDTO>(post); //??  Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
-                return Ok(destination);
+                BlogPostDTO postToReturn = mappingProvider.Map<BlogPost, BlogPostDTO>(post); //??  Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
+                return Ok(postToReturn);
             }
             else
             {
@@ -96,8 +96,28 @@ namespace RestApiTest.Controllers
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                List<BlogPostDTO> postsToReturn = mappingProvider.ProjectTo<BlogPostDTO>(posts).ToList();
-                return Ok(postsToReturn);
+               // List<BlogPostDTO> postsToReturn = mappingProvider.ProjectTo<BlogPostDTO>(posts);
+                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //?? Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
+            }
+            else
+            {
+                logger.LogWarning("No posts to return");
+                return NoContent();
+            }
+        }
+
+        //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //?? Jak określić, żeby podawać parametry po "?" (np. find?title=test)?
+        [HttpGet("/api/blogposts/find/{titlePartToFind}")]
+        [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle(string titlePartToFind)
+        {
+            logger.LogInformation("Calling get for all posts containing in title: {0}", titlePartToFind);
+            var posts = await repository.GetPostsContaingInTitle(titlePartToFind);
+            long? count = posts?.Count();
+            if (count.HasValue && count.Value > 0)
+            {
+                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //?? Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
             }
             else
             {
@@ -113,7 +133,7 @@ namespace RestApiTest.Controllers
         {
             logger.LogInformation("Calling post for the following object: {@0} ", postToAdd); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
 //           postToAdd.Modified = DateTime.Now.ToLongDateString();
-            var addedPost = await repository.AddAsync(mappingProvider.Map<BlogPostDTO, BlogPost>(postToAdd));
+            BlogPost addedPost = await repository.AddAsync(mappingProvider.Map<BlogPostDTO, BlogPost>(postToAdd));
             var addedPostDTO = mappingProvider.Map<BlogPostDTO>(addedPost); //?? Czy to podwójne mapowanie nie jest już za dużym narzutem na taką akcję?
             return CreatedAtRoute("GetBlog", new { id = addedPost.Id }, addedPostDTO); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
         }
@@ -151,11 +171,10 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(BlogPost), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(BlogPost), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status409Conflict)]
         public async Task<ActionResult> Put(long id, [FromBody] BlogPostDTO updatedPost)
         {
-            //TODO: zwracać zawsze stan aktualny z bazy, a nie obiekt z parametrów
-            //TODO: w controller'ach używać DTO
+            //[Note] zwraca się zawsze stan aktualny z bazy, a nie obiekt z parametrów
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
             try
             {
@@ -180,7 +199,6 @@ namespace RestApiTest.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status404NotFound)] //DONE: ProduceResponse dla pozostałych endpointów
         public async Task<ActionResult> Delete(int id)
         {
             var post = await repository.GetAsync(id); //?? czy w praktyce tak się robi, czy raczej od razu próbować usunąć dla lepszej wydajności?
@@ -218,8 +236,8 @@ namespace RestApiTest.Controllers
 //??
 
 //Zadanie 12.06
-//TODO: usunąć nullable z encji w Core.Models
-//TODO: Implementacja DTO dla kontrolerów, mają mieć pola nullowalne. DTO ma nie mieć pola 'ModifiedDate' //[Note] - DTO i encje są modelami danych, ale DTO jest uproszczony, na poziomie tylko kontrolera, a encja jest modelem pełnym, domenowym
-//TODO: dodać w kontrolerach implementację akcji patch dla aktualizacji tylko określonych pól, jeśli nie są nullami
-//TODO: wyszukiwanie postów po tytule
+//TODO: usunąć nullable z encji w Core.Models i oznaczyć jako required
+//Done: Implementacja DTO dla kontrolerów, mają mieć pola nullowalne. DTO ma nie mieć pola 'ModifiedDate' //[Note] - DTO i encje są modelami danych, ale DTO jest uproszczony, na poziomie tylko kontrolera, a encja jest modelem pełnym, domenowym
+//Done: dodać w kontrolerach implementację akcji patch dla aktualizacji tylko określonych pól, jeśli nie są nullami
+//TODO: [Done]wyszukiwanie postów po tytule
 //TODO: pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)

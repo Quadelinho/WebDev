@@ -12,5 +12,6 @@ namespace RestApiTest.DTO
         public DateTime? LastLoggedIn { get; set; }
         public int? ReputationPoints { get; set; }
         public bool? IsSubscribedToNewsletter { get; set; }
+        //TODO: Dodać kolekcję komentarzy użytkownika do DTO
     }
 }

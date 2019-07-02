@@ -155,5 +155,14 @@ namespace RestApiTest.Infrastructure.Repositories
             await context.SaveChangesAsync();
             return entityEntry.Entity;
         }
+
+        public async Task<IQueryable<BlogPost>> GetPostsContaingInTitle(string textToSearch)
+        {
+            if(String.IsNullOrWhiteSpace(textToSearch))
+            {
+                return context.Posts;
+            }
+            return context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
+        }
     }
 }

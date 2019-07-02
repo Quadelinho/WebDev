@@ -5,6 +5,7 @@ using RestApiTest.Core.Models;
 using RestApiTest.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
@@ -45,7 +46,7 @@ namespace RestApiTest.Infrastructure.Repositories
             }//TODO: bool czy się udało, czy nie
         }
 
-        public async Task<IEnumerable<Comment>> GetAllCommentsForPost(long commentedPostId)
+        public async Task<IQueryable<Comment>> GetAllCommentsForPost(long commentedPostId)
         {
             BlogPost relatedPost = await context.Posts.FindAsync(commentedPostId); //?? czy to da radę znaleźć też obiekty klasy pochodnej? //TODO: Sprawdzić
             if(relatedPost == null)
@@ -53,10 +54,11 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Getting all post's comments failed - no post with given id exists");
             }
 
-            return relatedPost.Comments; //[Note] - lepiej na kontekście, żeby nie było dwukrotnie wykonywanych strzałów na bazę - Czy zwraca się tak, czy też powinienem wykonać operację na kontekście? Czy to sam framework ogarnie właśnie tak jak zrobiłem
+            return context.PostComments.Where(c => c.RelatedPost.Id == commentedPostId); //?? jakim narzędziem najlepiej sprawdzać ile rzeczywiście leci strzałów na bazę (czy np. EF nie jest optymalizowany z lazy loadingiem tak, żeby to ogarnąć lepiej niż jawne wywołanie przez context?)
+            //return relatedPost.Comments.AsQueryable(); //[Note] - lepiej na kontekście, żeby nie było dwukrotnie wykonywanych strzałów na bazę - Czy zwraca się tak, czy też powinienem wykonać operację na kontekście? Czy to sam framework ogarnie właśnie tak jak zrobiłem
         }
 
-        public async Task<IEnumerable<Comment>> GetAllCommentsForUser(long authorId)
+        public async Task<IQueryable<Comment>> GetAllCommentsForUser(long authorId)
         {
             ForumUser author = await context.Users.FindAsync(authorId); //TODO: sprawdzić czy nie jest potrzebny include, żeby zaciągnąć referencje
             if (author == null)
@@ -64,7 +66,8 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Getting all user's comments failed - no user with given id exists"); //[Note] - z kontrolera lepiej zwrócić NoContent W takich sytuacjach w praktyce rzuca się wyjątki, czy zwraca po prostu pustą kolekcję? //TODO: najlepiej zdefiniować wyjątek domenowy, że nie ma niczego do zwrócenia i obsługiwać to w global exception handler'ze zwracając NoContent
             }
 
-            return author.UsersComments; //TODO: Sprawdzić co będzie lepsze (sprawdzić query)
+            return context.PostComments.Where(c => c.Author.Id == authorId);
+            //return author.UsersComments; //TODO: Sprawdzić co będzie lepsze (sprawdzić query)
         }
 
         public async Task<Comment> GetAsync(long id)
@@ -90,7 +93,7 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 throw new BlogPostsDomainException("Update comment failed - no object for update");
             }
-            //TODO: repo powinno zwracać queryable
+            //Done: repo powinno zwracać queryable
         }
     }
 }
