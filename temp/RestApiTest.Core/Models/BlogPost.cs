@@ -6,16 +6,19 @@ using System.Linq;
 
 namespace RestApiTest.Core.Models
 {
-    //TODO: Zdefiniować wszystkie pola w modelach jako required (nie nullowalne)
     public class BlogPost : IVotable /*: IMarkable*/ //?? Czy tego typu implementacje powinny być w ramach klasy modelu, czy raczej implementacji repozytorium (BlogPostRepository)?
     {
         [Required]
         public long Id { get; set; }
        
+        [Required, StringLength(400, MinimumLength = 5)]
         public string Title { get; set; }
+
+        [Required]
         public string Content { get; set; }
 
         [StringLength(25, MinimumLength = 3)]
+        //[Required] //Wykomentowane na potrzeby prostego tworzenia początkowych danych testowych
         public ForumUser Author { get; set; } //[Note] AutoMapper jest w stanie to ogarnąć, jeśli ma zdefiniowane w konfiguracji mapowanie obiektu tej klasy - wtedy w odpowiednim mapowanym obiekcie (np. BlogPostDTO) z automatu zamieniłby referencję do ForumUsers na właściwości określone w obiekcie ForumUserDTO
                                                 //TODO: Sprawdzić, czy jeśli AutoMapper nie miałby zdefiniowanego mapowania na ForumUserDTO (ani nic w ogóle dla ForumUser, to czy wstawiłby tu właściwości klasy ForumUser?
                                                 //TODO: Sprawdzić, jak by się zachował przy takim automatycznym mapowaniu typów zagnieżdżonych, gdyby taki typ wewnętrzny miał właściwość o takiej samej nazwie jak nadrzędny (np. Title z posta i Title z Comment)?

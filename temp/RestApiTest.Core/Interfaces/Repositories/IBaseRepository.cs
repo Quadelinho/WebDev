@@ -11,6 +11,6 @@ namespace RestApiTest.Core.Interfaces.Repositories
         Task<T> UpdateAsync(T objectToUpdate);
         Task<T> GetAsync(long id);
         Task<T> ApplyPatchAsync(T objectToModify, List<PatchDTO> propertiesToUpdate);
-        //TODO: dodać też dla all - repo może mieć, ukryć w kontrolerze
+        //TODO: [Optional] dodać też dla all - repo może mieć, ukryć w kontrolerze
     }
 }

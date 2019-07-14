@@ -26,6 +26,8 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Failed to add comment - empty object");
             }
 
+            objectToAdd.SetInitialValues();
+
             ForumUser author = await context.Users.FindAsync(objectToAdd.Author.Id);
             if(author != null)
             {
@@ -35,9 +37,7 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 //TODO: throw domain exception for author not found
             }
-
-            objectToAdd.UpdateDate(false);
-
+            
             await context.PostComments.AddAsync(objectToAdd);
             await context.SaveChangesAsync();
             return objectToAdd;
@@ -54,7 +54,7 @@ namespace RestApiTest.Infrastructure.Repositories
             var entityEntry = context.Entry(objectToModify);
             entityEntry.CurrentValues.SetValues(properties);
             entityEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified;
-            entityEntry.Entity.UpdateDate(true);
+            entityEntry.Entity.UpdateDate();
             await context.SaveChangesAsync();
             return entityEntry.Entity;
         }
@@ -108,7 +108,7 @@ namespace RestApiTest.Infrastructure.Repositories
             Comment comment = await context.PostComments.FindAsync(objectToUpdate.Id);
             if(comment != null)
             {
-                objectToUpdate.UpdateDate(true);
+                objectToUpdate.UpdateDate();
                 context.Entry(comment).CurrentValues.SetValues(objectToUpdate);
                 await context.SaveChangesAsync();
                 return comment;
@@ -125,7 +125,7 @@ namespace RestApiTest.Infrastructure.Repositories
             Comment commentToApprove = await context.PostComments.FindAsync(id);
             if (commentToApprove != null)
             {
-                commentToApprove.Approved = true;
+                commentToApprove.Approve();
                 await context.SaveChangesAsync();
                 return commentToApprove;
             }

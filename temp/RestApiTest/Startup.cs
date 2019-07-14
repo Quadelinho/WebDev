@@ -8,23 +8,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
-using RestApiTest.Infrastructure.Repositories;
 using RestApiTest.DTO;
 using RestApiTest.Infrastructure.Data;
+using RestApiTest.Infrastructure.Repositories;
 using Swashbuckle.AspNetCore.Swagger;
-using System;
-using System.Collections.Generic;
 
 namespace RestApiTest
 {
     public class Startup
     {
         private readonly ILogger<ForumContext> logger;
-        private /*readonly*/ IMapper mapper;
-
-        //?? Coś tu nie gra z docker'em - bez zmian czasem działa, a innym razem w ogóle nie reaguje na ten projekt (choć hello-world odpowiada i nie zgłasza nic żadneego błędu)
-
-        //?? gdzie definiuje się mapowanie tego automatycznego Dependency Injection, np. kiedy mam kilka implementacji danego interfejsu? Jawnie w ConfigureServices, a domyślne mapowanie można jakoś podejrzeć?
+        private IMapper mapper;
+        
+        //[Note] - tutaj, w ConfigureServices - gdzie definiuje się mapowanie tego automatycznego Dependency Injection, np. kiedy mam kilka implementacji danego interfejsu? Jawnie w ConfigureServices, a domyślne mapowanie można jakoś podejrzeć?
         public Startup(/*IConfiguration configuration,*/ ILogger<ForumContext> log, IHostingEnvironment environment) //[Note] Jest tu już wstrzykiwany obiekt logger'a - Atomatyczne dependency injection jest w stanie to ogarnąć
         {
             //Configuration = configuration;
