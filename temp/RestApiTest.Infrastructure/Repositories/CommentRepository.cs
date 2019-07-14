@@ -26,14 +26,37 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Failed to add comment - empty object");
             }
 
+            ForumUser author = await context.Users.FindAsync(objectToAdd.Author.Id);
+            if(author != null)
+            {
+                objectToAdd.Author = author;
+            }
+            else
+            {
+                //TODO: throw domain exception for author not found
+            }
+
+            objectToAdd.UpdateDate(false);
+
             await context.PostComments.AddAsync(objectToAdd);
             await context.SaveChangesAsync();
             return objectToAdd;
         }
 
-        public Task<Comment> ApplyPatchAsync(Comment objectToModify, List<PatchDTO> propertiesToUpdate)
+        public async Task<Comment> ApplyPatchAsync(Comment objectToModify, List<PatchDTO> propertiesToUpdate)
         {
-            throw new NotImplementedException();
+            var properties = propertiesToUpdate.ToDictionary(p => p.PropertyName, p => p.PropertyValue);
+            if (properties.ContainsKey("Modified"))
+            {
+                throw new InvalidOperationException("Attempt to apply patch to restricted property");
+            }
+
+            var entityEntry = context.Entry(objectToModify);
+            entityEntry.CurrentValues.SetValues(properties);
+            entityEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+            entityEntry.Entity.UpdateDate(true);
+            await context.SaveChangesAsync();
+            return entityEntry.Entity;
         }
 
         public async Task DeleteAsync(long id)
@@ -43,7 +66,7 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 context.PostComments.Remove(comment);
                 await context.SaveChangesAsync();
-            }//TODO: bool czy się udało, czy nie
+            }
         }
 
         public async Task<IQueryable<Comment>> GetAllCommentsForPost(long commentedPostId)
@@ -85,6 +108,7 @@ namespace RestApiTest.Infrastructure.Repositories
             Comment comment = await context.PostComments.FindAsync(objectToUpdate.Id);
             if(comment != null)
             {
+                objectToUpdate.UpdateDate(true);
                 context.Entry(comment).CurrentValues.SetValues(objectToUpdate);
                 await context.SaveChangesAsync();
                 return comment;
@@ -94,6 +118,36 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Update comment failed - no object for update");
             }
             //Done: repo powinno zwracać queryable
+        }
+
+        public async Task<Comment> ApproveCommentAsync(long id)
+        {
+            Comment commentToApprove = await context.PostComments.FindAsync(id);
+            if (commentToApprove != null)
+            {
+                commentToApprove.Approved = true;
+                await context.SaveChangesAsync();
+                return commentToApprove;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public async Task<Comment> MarkCommentAsSolutionAsync(long id)
+        {
+            Comment commentToMark = await context.PostComments.FindAsync(id);
+            if (commentToMark != null)
+            {
+                commentToMark.IsRecommendedSolution = true;
+                await context.SaveChangesAsync();
+                return commentToMark;
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 }

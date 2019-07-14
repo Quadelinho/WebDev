@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace RestApiTest.DTO
 {
@@ -12,6 +13,6 @@ namespace RestApiTest.DTO
         public DateTime? LastLoggedIn { get; set; }
         public int? ReputationPoints { get; set; }
         public bool? IsSubscribedToNewsletter { get; set; }
-        //TODO: Dodać kolekcję komentarzy użytkownika do DTO
+        public IEnumerable<CommentDTO> UserComments { get; set; } //?? Typy referencyjne w DTO powinny wskazywać na typ DTO, a nei rzeczywisty, tak?
     }
 }

@@ -9,5 +9,7 @@ namespace RestApiTest.Core.Interfaces.Repositories
     {
         Task<IQueryable<Comment>> GetAllCommentsForPost(long commentedPostId);
         Task<IQueryable<Comment>> GetAllCommentsForUser(long authorId);
+        Task<Comment> ApproveCommentAsync(long id);
+        Task<Comment> MarkCommentAsSolutionAsync(long id);
     }
 }

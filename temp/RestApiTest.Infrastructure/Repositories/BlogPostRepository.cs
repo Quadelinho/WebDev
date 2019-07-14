@@ -14,6 +14,7 @@ namespace RestApiTest.Infrastructure.Repositories
     public class BlogPostRepository : IBlogPostRepository
     {
         private ForumContext context;
+        private const int postsOnPage = 2;
         public BlogPostRepository(ForumContext context)
         {
             this.context = context;
@@ -71,10 +72,10 @@ namespace RestApiTest.Infrastructure.Repositories
             BlogPost post = await context.Posts.FindAsync(objectToUpdate.Id);
             if (post != null)
             {
-                post.UpdateModifiedDate();
+                objectToUpdate.UpdateModifiedDate();
                 context.Entry(post).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
                 await context.SaveChangesAsync(); //?? Było polecane użycie update, żeby nie zmieniać całego kontekstu, ale nie ma update'u asynchronicznego
-                return post;//?? Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności?
+                return post;//?? Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności (powinno raczej wystarczyć zwrócenie tego obiektu, bo context powinien być spójny z bazą)?
             }
             else
             {
@@ -152,6 +153,7 @@ namespace RestApiTest.Infrastructure.Repositories
             var entityEntry = context.Entry(objectToModify);
             entityEntry.CurrentValues.SetValues(properties); //[Note] Metoda SetValues ma przydatne przeładowanie, pozwalające przekazać cały obiekt - wówczas wszystkie właściwości o takich samych nazwach zostaną przekopiowane (pozwala to z automatu używać np. obiektów DTO)
             entityEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified; //?? Na necie widziałem, że definiują ten stan - czy to jakoś przyspiesza operacje, czy jest nadmiarowe, czy może tylko w celach informacyjncyh dla zachowania spójności danych?
+            entityEntry.Entity.UpdateModifiedDate();
             await context.SaveChangesAsync();
             return entityEntry.Entity;
         }
@@ -163,6 +165,18 @@ namespace RestApiTest.Infrastructure.Repositories
                 return context.Posts;
             }
             return context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        public /*async Task<*/IQueryable<BlogPost>/*>*/ GetBlogPostsChunkAsync(int pageNo)
+        {
+            IQueryable<BlogPost> postsChunk = null;
+            long totalPostsCount = context.Posts.Count();
+            if(totalPostsCount > 0)
+            {
+                int count = pageNo * postsOnPage;
+                postsChunk = context.Posts.Skip(count).Take(postsOnPage);
+            }
+            return postsChunk;
         }
     }
 }

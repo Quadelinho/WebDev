@@ -140,5 +140,39 @@ namespace RestApiTest.Controllers
                 return NoContent();
             }
         }
+
+        [HttpPut("/comments/{id}")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult> ApproveComment(long id)
+        {
+            try
+            {
+                await repository.ApproveCommentAsync(id);
+                return Ok();
+            }
+            catch (System.Exception)
+            {
+                return NotFound(id);
+            }
+        }
+
+        [HttpPut("/comments/markSolution/{id}")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult> MarkCommentAsSolution(long id)
+        {
+            try
+            {
+                await repository.MarkCommentAsSolutionAsync(id);
+                return Ok();
+            }
+            catch (System.Exception)
+            {
+                return NotFound(id);
+            }
+        }
+
+        //TODO: Metody do pobierania wszystkich zatwierdzonych lub niezatwierdzonych komentarzy (lub parametr do metody get)
     }
 }

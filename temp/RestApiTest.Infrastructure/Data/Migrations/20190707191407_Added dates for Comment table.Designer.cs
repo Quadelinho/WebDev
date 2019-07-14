@@ -10,8 +10,8 @@ using RestApiTest.Infrastructure.Data;
 namespace RestApiTest.Infrastructure.Migrations
 {
     [DbContext(typeof(ForumContext))]
-    [Migration("20190629182250_initial")]
-    partial class initial
+    [Migration("20190707191407_Added dates for Comment table")]
+    partial class AddeddatesforCommenttable
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -33,6 +33,8 @@ namespace RestApiTest.Infrastructure.Migrations
 
                     b.Property<string>("Discriminator")
                         .IsRequired();
+
+                    b.Property<DateTime>("Modified");
 
                     b.Property<long?>("TagId");
 
@@ -186,7 +188,7 @@ namespace RestApiTest.Infrastructure.Migrations
             modelBuilder.Entity("RestApiTest.Core.Models.Comment", b =>
                 {
                     b.HasOne("RestApiTest.Core.Models.ForumUser", "Author")
-                        .WithMany("UsersComments")
+                        .WithMany("UserComments")
                         .HasForeignKey("AuthorId");
 
                     b.HasOne("RestApiTest.Core.Models.Comment")

@@ -66,9 +66,6 @@ namespace RestApiTest.Controllers
         public async Task<ActionResult<BlogPostDTO>> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
-
-           // IMapper mapper = mappingProvider.ConfigurationProvider.CreateMapper();
-
             BlogPost post = await repository.GetAsync(id);
             if (post != null)
             {
@@ -92,12 +89,30 @@ namespace RestApiTest.Controllers
         {
             //?? Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielić na osobne metody
             logger.LogInformation("Calling get for all posts");
-            var posts = /*await*/ repository.GetAllBlogPostsAsync(); //?? Jak tutaj się robi jakieś "porcjowanie", albo coś w rodzaju yield'a, żeby nie pchać dużej paczki w response'ie/ //TODO: AsyncEnumerable
+            var posts = /*await*/ repository.GetAllBlogPostsAsync(); //?? Jak to tutaj powinno być zwracane, żeby było asynchroniczne (czy da radę bez IAsyncEnumerablle)?
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-               // List<BlogPostDTO> postsToReturn = mappingProvider.ProjectTo<BlogPostDTO>(posts);
                 return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //?? Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
+            }
+            else
+            {
+                logger.LogWarning("No posts to return");
+                return NoContent();
+            }
+        }
+
+        [HttpGet("/pages/{pageNo}")]
+        [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetNextChunk(int pageNo)
+        {
+            logger.LogInformation("Calling get for next chunk");
+            var posts = /*await*/ repository.GetBlogPostsChunkAsync(pageNo);
+            long? count = posts?.Count();
+            if (count.HasValue && count.Value > 0)
+            {
+                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts));
             }
             else
             {
@@ -117,7 +132,7 @@ namespace RestApiTest.Controllers
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //?? Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
+                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts));
             }
             else
             {
@@ -144,7 +159,7 @@ namespace RestApiTest.Controllers
         public async Task<IActionResult> Patch(long id, [FromBody] List<PatchDTO> propertiesToUpdate)
         {//?? W jaki sposób prawidłowo zapewnia się walidację obiektu wejściowego, żeby dla POST'a obiekt DTO nie zawierał żadnych pustych pól, a patch pozwalał ustawić np. tylko jedno pole? Na necie znalazłem podejście z osobnym obiektem PatchDTO, ale to wygląda jak mocny nadmiar
 
-            //?? Czy jest jakiś sprytny sposób zablokowania pól przed edycją, oprócz private set, np. jeśli chcemy, żeby jakieś pola nie mogły być edytowane patch'em?
+            //?? Czy jest jakiś sprytny sposób zablokowania pól przed edycją, oprócz private set i DTO, np. jeśli chcemy, żeby jakieś pola nie mogły być edytowane patch'em?
             logger.LogInformation("Calling patch for the following object with id = {0} ", id);
             try
             {
@@ -178,6 +193,7 @@ namespace RestApiTest.Controllers
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
             try
             {
+                updatedPost.Id = id;
                 var modifiedPost = await repository.UpdateAsync(mappingProvider.Map<BlogPost>(updatedPost));
                 return Ok(mappingProvider.Map<BlogPostDTO>(modifiedPost));
             }
@@ -186,7 +202,6 @@ namespace RestApiTest.Controllers
                 logger.LogWarning("There was nothing to update");
                 return NotFound(id);
             }
-//            post.Modified = DateTime.Now.ToLongDateString();
 
             //try //[Note] raczej nie ma potrzeby używać tu try-catch -> zazwyczaj w web dev'ie stosuje się podejście global exception handler'a
              //Użyć Update, żeby nie zmieniać całego kontekstu
@@ -239,5 +254,5 @@ namespace RestApiTest.Controllers
 //TODO: usunąć nullable z encji w Core.Models i oznaczyć jako required
 //Done: Implementacja DTO dla kontrolerów, mają mieć pola nullowalne. DTO ma nie mieć pola 'ModifiedDate' //[Note] - DTO i encje są modelami danych, ale DTO jest uproszczony, na poziomie tylko kontrolera, a encja jest modelem pełnym, domenowym
 //Done: dodać w kontrolerach implementację akcji patch dla aktualizacji tylko określonych pól, jeśli nie są nullami
-//TODO: [Done]wyszukiwanie postów po tytule
-//TODO: pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)
+//TODO: [Done] wyszukiwanie postów po tytule
+//TODO: [Done] pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)

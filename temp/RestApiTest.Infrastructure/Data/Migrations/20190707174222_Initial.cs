@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RestApiTest.Infrastructure.Migrations
 {
-    public partial class initial : Migration
+    public partial class Initial : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -110,6 +110,7 @@ namespace RestApiTest.Infrastructure.Migrations
                     Title = table.Column<string>(nullable: true),
                     Content = table.Column<string>(nullable: true),
                     AuthorId = table.Column<long>(nullable: true),
+                    Modified = table.Column<DateTime>(nullable: false),
                     Discriminator = table.Column<string>(nullable: false),
                     TagId = table.Column<long>(nullable: true),
                     Approved = table.Column<bool>(nullable: true),

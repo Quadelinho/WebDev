@@ -115,7 +115,7 @@ namespace RestApiTest
                 //Przykład definiowania mapowania innego niż domyślne
                 //cfg.CreateMap<BlogPost, BlogPostDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)); //[Note] - powinno wystarczyć tylko to uszczegółowione (skoro zostało zdefiniowane uszczegółowienie, to ogół będzie domyślnie) - Czy jeśli mam jakieś propertiesy zdefiniowane osobno, to muszę wtedy dodać mapę od tych standardowych nazwanych jednakowo? 
                 cfg.CreateMap<BlogPost, BlogPostDTO>().ReverseMap();
-                //cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id));
+                cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)).ReverseMap();
                 cfg.CreateMap<Comment, CommentDTO>().ReverseMap();
                 cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap();
                 cfg.CreateMap<NewsMessage, NewsMessageDTO>().ReverseMap();

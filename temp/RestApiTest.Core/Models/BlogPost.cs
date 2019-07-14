@@ -26,8 +26,8 @@ namespace RestApiTest.Core.Models
             //a po prostu takie "automatyczne pola" jak np. modified po prostu i tak się zawsze nadpisuje z poziomu kodu?
         public DateTime Modified //{ get; set; } //= DateTime.Now.ToLongDateString(); //?? Zmiana typu pola nie została wykryta przez komendę Update-Database jako modyfikacja do utowrzenia migracji
         {
-            get; //TODO: ustawianie Modified zrobić na triggerach w bazie i getter'ami zawsze zwracać aktualny stan z bazy //[Note] - bezpośrednio w migracjach raczej nie, trzeba to osobno manualnie zdefiniować - Czy tego typu elementy jak triggery da się też odzwierciedlić w tych plikach tworzących migracje bazy? 
-            //private set;
+            get; //TODO: [DONE, z użyciem private set] ustawianie Modified zrobić na triggerach w bazie i getter'ami zawsze zwracać aktualny stan z bazy //[Note] - bezpośrednio w migracjach raczej nie, trzeba to osobno manualnie zdefiniować - Czy tego typu elementy jak triggery da się też odzwierciedlić w tych plikach tworzących migracje bazy? 
+            private set;
         }
         public ICollection<Comment> Comments { get; set; }
         public ICollection<Vote> Votes { get; set; } //TODO: przerobić like'i na Event Sourcing. Przerobić na model Vote (tabela z poszczególnymi informacjami [Note] - pozwala w razie czego odtworzyć stan np.
@@ -58,7 +58,7 @@ namespace RestApiTest.Core.Models
 
         public void UpdateModifiedDate()
         {
-            //Modified = DateTime.UtcNow;
+            Modified = DateTime.UtcNow;
         }
 
         //public void RemoveVote(long voteId)
