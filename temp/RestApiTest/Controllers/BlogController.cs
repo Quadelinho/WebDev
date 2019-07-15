@@ -89,8 +89,8 @@ namespace RestApiTest.Controllers
         {
             //?? Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielić na osobne metody
             logger.LogInformation("Calling get for all posts");
-            var posts = /*await*/ repository.GetAllBlogPostsAsync(); //?? Jak to tutaj powinno być zwracane, żeby było asynchroniczne (czy da radę bez IAsyncEnumerablle)?
-            long? count = posts?.Count();
+            var posts = /*await*/ repository.GetAllBlogPostsAsync()/*.ToAsyncEnumerable()*/; //?? Jak to tutaj powinno być zwracane, żeby było asynchroniczne (czy da radę bez IAsyncEnumerablle)?
+            long? count = /*await*/ posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
                 return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //?? Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
@@ -125,10 +125,10 @@ namespace RestApiTest.Controllers
         [HttpGet("/api/blogposts/find/{titlePartToFind}")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle(string titlePartToFind)
+        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle(string titlePartToFind) //?? Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
         {
             logger.LogInformation("Calling get for all posts containing in title: {0}", titlePartToFind);
-            var posts = await repository.GetPostsContaingInTitle(titlePartToFind);
+            var posts = /*await*/ repository.GetPostsContaingInTitle(titlePartToFind);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
             {

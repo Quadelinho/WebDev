@@ -15,7 +15,5 @@ namespace RestApiTest.Infrastructure.Data
         public DbSet<ForumUser> Users { get; set; } //[NOTE]: Nazwy takie jak User są już często wykorzystane jako słowa kluczowe frameworka, dlatego trzeba dawać od razu inne (profilaktycznie)
         public DbSet<Comment> PostComments { get; set; }
         public DbSet<Vote> Votes { get; set; }
-
-        //TODO: na razie zrobić tylko 2 i kontrolery (Question, Comment kontroler)
     }
 }

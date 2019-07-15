@@ -16,4 +16,3 @@ namespace RestApiTest.DTO
         public IEnumerable<VoteDTO> Votes { get; set; }
     }
 }
-//TODO: zdefiniować elementy wymagane

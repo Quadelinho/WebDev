@@ -32,7 +32,7 @@ namespace RestApiTest.Core.Models
             get; //TODO: [DONE, z użyciem private set] ustawianie Modified zrobić na triggerach w bazie i getter'ami zawsze zwracać aktualny stan z bazy //[Note] - bezpośrednio w migracjach raczej nie, trzeba to osobno manualnie zdefiniować - Czy tego typu elementy jak triggery da się też odzwierciedlić w tych plikach tworzących migracje bazy? 
             private set;
         }
-        public ICollection<Comment> Comments { get; set; }
+        public /*virtual*/ ICollection<Comment> Comments { get; set; } //[Note] - jeśli kolekcja referencyjna jest zdefiniowana jako virtual - działa automatycznie lazy loading w EF -> zależności są ładowane automatycznie przy pierwszym odwołaniu (https://docs.microsoft.com/en-us/ef/ef6/querying/related-data)
         public ICollection<Vote> Votes { get; set; } //TODO: przerobić like'i na Event Sourcing. Przerobić na model Vote (tabela z poszczególnymi informacjami [Note] - pozwala w razie czego odtworzyć stan np.
 
         //public void AddVote(Vote voteToAdd)

@@ -122,11 +122,11 @@ namespace RestApiTest.Controllers
             }
         }
 
-        [HttpGet("/users/{id}/comments/", Name = "GetAllCommentsForUser")]
+        [HttpGet("/users/{userId}/comments/", Name = "GetAllCommentsForUser")]
         [ProducesResponseType(typeof(IEnumerable<CommentDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<CommentDTO>>> GetAllCommentsForUser(long userId)
-        {
+        public async Task<ActionResult<IEnumerable<CommentDTO>>> GetAllCommentsForUser(long userId/*, [FromBody] bool? includeApproved, bool? includeNotApproved*/)
+        {//?? Jak można przekazać do get'a dodatkowe parametry (nie licząc wersji po slash'ach)?
             logger.LogInformation("Calling get for all comments of given user");
             var comments = await repository.GetAllCommentsForUser(userId); 
             long? count = comments?.Count();

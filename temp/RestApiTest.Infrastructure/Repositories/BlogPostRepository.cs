@@ -1,4 +1,5 @@
-﻿using RestApiTest.Core.DTO;
+﻿using Microsoft.EntityFrameworkCore;
+using RestApiTest.Core.DTO;
 using RestApiTest.Core.Exceptions;
 using RestApiTest.Core.Interfaces;
 using RestApiTest.Core.Interfaces.Repositories;
@@ -34,6 +35,7 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Update failed - the post with given title already exists");
             }
 
+            objectToAdd.UpdateModifiedDate();
             await context.Posts.AddAsync(objectToAdd); //?? Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
             await context.SaveChangesAsync();
             return objectToAdd;
@@ -50,14 +52,24 @@ namespace RestApiTest.Infrastructure.Repositories
         }
 
         //[Note] - tak, IAsyncEnumerable ma wewnątrz taski i yeld'a, więc samo użycie tego typu już oznacza async'a - Czy jeśli chcę używać IAsyncEnumerable, które ma taski wewnątrz, to znaczy, że samej metody już nie mogę oznaczyć jako async
-        public /*async*/ /*Task<*//*IEnumerable*/IQueryable<BlogPost> GetAllBlogPostsAsync() //=> (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable();
+        public IQueryable<BlogPost> /*Task<*//*IEnumerable*//*IQueryable<BlogPost>*/ GetAllBlogPostsAsync() //=> (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable();
         {
-            return /*await*/ context.Posts;//.ToList();
+            //return /*await*/ context.Posts;//.ToList();
+            return /*await*/ context.Posts.Include(p => p.Author)
+                .Include(p => p.Comments)
+                .Include(p => p.Votes)
+                .Select(p => p);
+                //.async();// LoadAsync();
         }
 
         public async Task<BlogPost> GetAsync(long id)
         {
-            return await context.Posts.FindAsync(id);
+            //return await context.Posts.Include(p => p.Author).FindAsync(id);
+            return await context.Posts.Where(p => p.Id == id)
+                .Include(p => p.Author)
+                .Include(p => p.Comments)
+                .Include(p => p.Votes)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<BlogPost> UpdateAsync(BlogPost objectToUpdate)
@@ -66,7 +78,6 @@ namespace RestApiTest.Infrastructure.Repositories
             {
                 throw new InvalidOperationException("Update failed - empty source object");
             }
-            //TODO: drugie query z Where do porównania
             ThrowOnTitleDuplication(objectToUpdate.Title, objectToUpdate.Id);
 
             BlogPost post = await context.Posts.FindAsync(objectToUpdate.Id);
@@ -158,23 +169,32 @@ namespace RestApiTest.Infrastructure.Repositories
             return entityEntry.Entity;
         }
 
-        public async Task<IQueryable<BlogPost>> GetPostsContaingInTitle(string textToSearch)
+        public IQueryable<BlogPost> GetPostsContaingInTitle(string textToSearch)
         {
             if(String.IsNullOrWhiteSpace(textToSearch))
             {
-                return context.Posts;
+                return context.Posts
+                    .Include(p => p.Author)
+                    .Include(p => p.Comments)
+                    .Include(p => p.Votes);
             }
-            return context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
+            return context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase))
+                .Include(p => p.Author)
+                .Include(p => p.Comments)
+                .Include(p => p.Votes);
         }
 
-        public /*async Task<*/IQueryable<BlogPost>/*>*/ GetBlogPostsChunkAsync(int pageNo)
+        public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo)
         {
-            IQueryable<BlogPost> postsChunk = null;
+            IQueryable<BlogPost> postsChunk = Enumerable.Empty<BlogPost>().AsQueryable();//null;
             long totalPostsCount = context.Posts.Count();
             if(totalPostsCount > 0)
             {
                 int count = pageNo * postsOnPage;
-                postsChunk = context.Posts.Skip(count).Take(postsOnPage);
+                postsChunk = context.Posts.Include(p => p.Author)
+                    .Include(p => p.Comments)
+                    .Include(p => p.Votes)
+                    .Skip(count).Take(postsOnPage);
             }
             return postsChunk;
         }

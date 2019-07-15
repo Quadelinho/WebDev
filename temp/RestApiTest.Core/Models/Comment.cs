@@ -85,7 +85,8 @@ namespace RestApiTest.Core.Models
             Approved = false;
             IsAdministrativeNote = false;
             IsRecommendedSolution = false;
-            SentDate = DateTime.UtcNow;
+            SentDate = Modified = DateTime.UtcNow;
+            Points = 0;
         }
 
         //?? Jak jest ogarnięte po stronie framework'a to rozróżnienie IQueryable i IEnumerable? czy wystarczy rzeczywiśćie tylko zmienić typ interfejsu, żeby ta sama zmienna odwołująca się do kolekcji z bazy była przez EF przetwarzana zupełnie inaczej?

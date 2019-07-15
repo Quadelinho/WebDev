@@ -29,13 +29,13 @@ namespace RestApiTest.Infrastructure.Repositories
             objectToAdd.SetInitialValues();
 
             ForumUser author = await context.Users.FindAsync(objectToAdd.Author.Id);
-            if(author != null)
+            if(author != null && author.IsConfirmed)
             {
                 objectToAdd.Author = author;
             }
             else
             {
-                //TODO: throw domain exception for author not found
+                throw new AuthorNotFoundException("Comment cannot be applied because user does not exist or is not confirmed");
             }
             
             await context.PostComments.AddAsync(objectToAdd);
@@ -83,14 +83,14 @@ namespace RestApiTest.Infrastructure.Repositories
 
         public async Task<IQueryable<Comment>> GetAllCommentsForUser(long authorId)
         {
-            ForumUser author = await context.Users.FindAsync(authorId); //TODO: sprawdzić czy nie jest potrzebny include, żeby zaciągnąć referencje
+            ForumUser author = await context.Users.FindAsync(authorId); //[Note] - tak, trzeba coś dodać, bo inaczej nie ładuje od razu zależności (np. wywołanie author.UserComments zwraca null) sprawdzić czy nie jest potrzebny include, żeby zaciągnąć referencje
             if (author == null)
             {
                 throw new BlogPostsDomainException("Getting all user's comments failed - no user with given id exists"); //[Note] - z kontrolera lepiej zwrócić NoContent W takich sytuacjach w praktyce rzuca się wyjątki, czy zwraca po prostu pustą kolekcję? //TODO: najlepiej zdefiniować wyjątek domenowy, że nie ma niczego do zwrócenia i obsługiwać to w global exception handler'ze zwracając NoContent
             }
 
             return context.PostComments.Where(c => c.Author.Id == authorId);
-            //return author.UsersComments; //TODO: Sprawdzić co będzie lepsze (sprawdzić query)
+            //return author.UsersComments; //[Note] - odwołanie bezpośrednio do kontekstu działa od razu, bez koniecznonści osobnego definiowania ładowania zależności - Sprawdzić co będzie lepsze (sprawdzić query)
         }
 
         public async Task<Comment> GetAsync(long id)

@@ -111,14 +111,15 @@ namespace RestApiTest
                 //Przykład definiowania mapowania innego niż domyślne
                 //cfg.CreateMap<BlogPost, BlogPostDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)); //[Note] - powinno wystarczyć tylko to uszczegółowione (skoro zostało zdefiniowane uszczegółowienie, to ogół będzie domyślnie) - Czy jeśli mam jakieś propertiesy zdefiniowane osobno, to muszę wtedy dodać mapę od tych standardowych nazwanych jednakowo? 
                 cfg.CreateMap<BlogPost, BlogPostDTO>().ReverseMap();
-                cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)).ReverseMap();
+                //cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)).ReverseMap();
                 cfg.CreateMap<Comment, CommentDTO>().ReverseMap();
-                cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap();
+                cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap(); //?? Jak zapewnieby Automapper mapowa typy zagnieżdżone? W BlogPostDTO i CommentDTO nie wyświetla nic dla ForumUser
                 cfg.CreateMap<NewsMessage, NewsMessageDTO>().ReverseMap();
                 cfg.CreateMap<Core.Models.Tag, TagDTO>().ReverseMap();
                 cfg.CreateMap<Vote, VoteDTO>().ReverseMap();
                 //[Note - reverse] Czy mam definiować 2 wpisy dla AutoMapper'a, żeby było możliwe mapowanie w obie strony (bo np. get powinien mapować odpowiedź repo na DTO, a post powinien mapować DTO na obiekt modelowy)
             });
+            mapperConfig.AssertConfigurationIsValid();
             mapper = mapperConfig.CreateMapper();
         }
     }
