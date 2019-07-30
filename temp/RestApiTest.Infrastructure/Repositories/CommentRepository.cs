@@ -77,7 +77,7 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Getting all post's comments failed - no post with given id exists");
             }
 
-            return context.PostComments.Where(c => c.RelatedPost.Id == commentedPostId); //?? jakim narzędziem najlepiej sprawdzać ile rzeczywiście leci strzałów na bazę (czy np. EF nie jest optymalizowany z lazy loadingiem tak, żeby to ogarnąć lepiej niż jawne wywołanie przez context?)
+            return context.PostComments.Where(c => c.RelatedPost.Id == commentedPostId); //[Note] - konsola z EF dosyć dobrze działa, ale prawilnie może też być SQL profiler - jakim narzędziem najlepiej sprawdzać ile rzeczywiście leci strzałów na bazę (czy np. EF nie jest optymalizowany z lazy loadingiem tak, żeby to ogarnąć lepiej niż jawne wywołanie przez context?)
             //return relatedPost.Comments.AsQueryable(); //[Note] - lepiej na kontekście, żeby nie było dwukrotnie wykonywanych strzałów na bazę - Czy zwraca się tak, czy też powinienem wykonać operację na kontekście? Czy to sam framework ogarnie właśnie tak jak zrobiłem
         }
 

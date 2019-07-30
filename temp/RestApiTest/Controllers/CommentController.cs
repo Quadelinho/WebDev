@@ -102,7 +102,8 @@ namespace RestApiTest.Controllers
             return Ok();
         }
 
-        //?? Nie widzi tutaj nazwy controller'a automatycznie - jeśli nie podałem poniżej jawnie /comment/ to metoda była wywoływana przy wywołaniu get z BlogPost/id
+        //TODO: uporządkować routing do endpoint'ów, żeby był spójny w ramach całej aplikacji
+        //[Note] - jeśli zaczyna się od / w routingiu to usuwa to co miał wcześniej zdefiniowane - Nie widzi tutaj nazwy controller'a automatycznie - jeśli nie podałem poniżej jawnie /comment/ to metoda była wywoływana przy wywołaniu get z BlogPost/id
         [HttpGet("/posts/{id}/comments/", Name = "GetAllCommentsForPost")] //[Note] Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //Done: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza) - dokumentacja: https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-2.2#attribute-routing
         [ProducesResponseType(typeof(IEnumerable<CommentDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -126,7 +127,7 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(IEnumerable<CommentDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<CommentDTO>>> GetAllCommentsForUser(long userId/*, [FromBody] bool? includeApproved, bool? includeNotApproved*/)
-        {//?? Jak można przekazać do get'a dodatkowe parametry (nie licząc wersji po slash'ach)?
+        {//[Note] - używając body, nagłówków lub definiując routing z wieloma parametrami rozdzielanymi np. | i definiując parser - Jak można przekazać do get'a dodatkowe parametry (nie licząc wersji po slash'ach)?
             logger.LogInformation("Calling get for all comments of given user");
             var comments = await repository.GetAllCommentsForUser(userId); 
             long? count = comments?.Count();

@@ -36,7 +36,7 @@ namespace RestApiTest.Infrastructure.Repositories
             }
 
             objectToAdd.UpdateModifiedDate();
-            await context.Posts.AddAsync(objectToAdd); //?? Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
+            await context.Posts.AddAsync(objectToAdd); //[Note] - w rest trzeba zwracać error code + explanation; zależnie czy jest zdefiniowane wymaganie od klienta, jeśli nie - można dla global handlera - Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
             await context.SaveChangesAsync();
             return objectToAdd;
         }
@@ -86,7 +86,7 @@ namespace RestApiTest.Infrastructure.Repositories
                 objectToUpdate.UpdateModifiedDate();
                 context.Entry(post).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
                 await context.SaveChangesAsync(); //?? Było polecane użycie update, żeby nie zmieniać całego kontekstu, ale nie ma update'u asynchronicznego
-                return post;//?? Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności (powinno raczej wystarczyć zwrócenie tego obiektu, bo context powinien być spójny z bazą)?
+                return post;//[Note] - jeśli było by ryzyko, że będzie jednoczesna aktualizacja na bazie, to powinno się odczytywać zawsze z bazy - Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności (powinno raczej wystarczyć zwrócenie tego obiektu, bo context powinien być spójny z bazą)?
             }
             else
             {
@@ -163,7 +163,7 @@ namespace RestApiTest.Infrastructure.Repositories
 
             var entityEntry = context.Entry(objectToModify);
             entityEntry.CurrentValues.SetValues(properties); //[Note] Metoda SetValues ma przydatne przeładowanie, pozwalające przekazać cały obiekt - wówczas wszystkie właściwości o takich samych nazwach zostaną przekopiowane (pozwala to z automatu używać np. obiektów DTO)
-            entityEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified; //?? Na necie widziałem, że definiują ten stan - czy to jakoś przyspiesza operacje, czy jest nadmiarowe, czy może tylko w celach informacyjncyh dla zachowania spójności danych?
+            entityEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified; //?? Na necie widziałem, że definiują ten stan - czy to jakoś przyspiesza operacje, czy jest nadmiarowe, czy może tylko w celach informacyjncyh dla zachowania spójności danych? //TODO: sprawdzić / poszukać, czy to daje jakąś optymalizację
             entityEntry.Entity.UpdateModifiedDate();
             await context.SaveChangesAsync();
             return entityEntry.Entity;
@@ -171,14 +171,16 @@ namespace RestApiTest.Infrastructure.Repositories
 
         public IQueryable<BlogPost> GetPostsContaingInTitle(string textToSearch)
         {
+            IQueryable<BlogPost> temp = null;
             if(String.IsNullOrWhiteSpace(textToSearch))
             {
-                return context.Posts
-                    .Include(p => p.Author)
-                    .Include(p => p.Comments)
-                    .Include(p => p.Votes);
+                temp = context.Posts; //TODO: uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania)
             }
-            return context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase))
+            else
+            {
+                temp = context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
+            }
+            return temp
                 .Include(p => p.Author)
                 .Include(p => p.Comments)
                 .Include(p => p.Votes);

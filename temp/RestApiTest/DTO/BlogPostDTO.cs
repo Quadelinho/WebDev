@@ -5,7 +5,7 @@ namespace RestApiTest.DTO
 {
     public class BlogPostDTO //[Note] - tak, stosuje się zazwyczaj przyrostek DTO lub Request - Czy używanie takiego przyrostka (DTO) jest zgodne z konwencją oficjalną? (Na necie takie widziałem).
     {
-        public long? Id { get; set; } //?? Pola takie jak Id nie powinny być w DTO?
+        public long? Id { get; set; } //[Note] - miusi być, żeby było wiadomo co aktualizować - Pola takie jak Id nie powinny być w DTO?
         public string Title {get; set;}
         public string Content { get; set; }
         //[Note] - tak, bo jedną z ról DTO jest ukrywanie rzeczywistej implementacji - Czy zamiast typu referencyjnego mam w obiekcie DTO wstawiać też obiekt DTO (np. ForumUserDTO)?

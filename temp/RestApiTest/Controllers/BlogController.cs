@@ -69,7 +69,7 @@ namespace RestApiTest.Controllers
             BlogPost post = await repository.GetAsync(id);
             if (post != null)
             {
-                BlogPostDTO postToReturn = mappingProvider.Map<BlogPost, BlogPostDTO>(post); //??  Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
+                BlogPostDTO postToReturn = mappingProvider.Map<BlogPost, BlogPostDTO>(post); //[Note] - konfiguracja początkowa jest niezbędna, bo bez niej automapper nie będzie w stanie niczego rozwiązać. Dodatkowo tutaj nie trzeba podawać obu typów, wystarczy docelowy, jeśli mapowanie jest unikalne (np. nie ma w konfiguracji mapowania jednego źródła na kilka docelowych) - Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
                 return Ok(postToReturn);
             }
             else
@@ -85,7 +85,7 @@ namespace RestApiTest.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetAll()
+        public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetAll()
         {
             //?? Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielić na osobne metody
             logger.LogInformation("Calling get for all posts");
@@ -93,7 +93,7 @@ namespace RestApiTest.Controllers
             long? count = /*await*/ posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //?? Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
+                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //[Note] sygnatura metody powinna być bez queryable, ale zwracać można bez problemu - Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
             }
             else
             {
@@ -121,13 +121,13 @@ namespace RestApiTest.Controllers
             }
         }
 
-        //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //?? Jak określić, żeby podawać parametry po "?" (np. find?title=test)?
+        //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
         [HttpGet("/api/blogposts/find/{titlePartToFind}")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle(string titlePartToFind) //?? Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
+        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle(string titlePartToFind) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
         {
-            logger.LogInformation("Calling get for all posts containing in title: {0}", titlePartToFind);
+            logger.LogInformation("Calling get for all posts containing in title: {0}", titlePartToFind); //TODO: takie rzeczy tylko jako debug
             var posts = /*await*/ repository.GetPostsContaingInTitle(titlePartToFind);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
@@ -149,7 +149,7 @@ namespace RestApiTest.Controllers
             logger.LogInformation("Calling post for the following object: {@0} ", postToAdd); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
 //           postToAdd.Modified = DateTime.Now.ToLongDateString();
             BlogPost addedPost = await repository.AddAsync(mappingProvider.Map<BlogPostDTO, BlogPost>(postToAdd));
-            var addedPostDTO = mappingProvider.Map<BlogPostDTO>(addedPost); //?? Czy to podwójne mapowanie nie jest już za dużym narzutem na taką akcję?
+            var addedPostDTO = mappingProvider.Map<BlogPostDTO>(addedPost); //[Note] - w tego typu aplikacjach narzut wynikający z mapowania jest powszechnym i akceptowanym minusem, bo mapowanie jest konieczne - Czy to podwójne mapowanie nie jest już za dużym narzutem na taką akcję?
             return CreatedAtRoute("GetBlog", new { id = addedPost.Id }, addedPostDTO); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
         }
 
@@ -157,9 +157,9 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Patch(long id, [FromBody] List<PatchDTO> propertiesToUpdate)
-        {//?? W jaki sposób prawidłowo zapewnia się walidację obiektu wejściowego, żeby dla POST'a obiekt DTO nie zawierał żadnych pustych pól, a patch pozwalał ustawić np. tylko jedno pole? Na necie znalazłem podejście z osobnym obiektem PatchDTO, ale to wygląda jak mocny nadmiar
+        {//[Note] definiuje się np. specjalne usługi walidacyjne. Można użyć FluentValidator'a - W jaki sposób prawidłowo zapewnia się walidację obiektu wejściowego, żeby dla POST'a obiekt DTO nie zawierał żadnych pustych pól, a patch pozwalał ustawić np. tylko jedno pole? Na necie znalazłem podejście z osobnym obiektem PatchDTO, ale to wygląda jak mocny nadmiar
 
-            //?? Czy jest jakiś sprytny sposób zablokowania pól przed edycją, oprócz private set i DTO, np. jeśli chcemy, żeby jakieś pola nie mogły być edytowane patch'em?
+            //[Note] - osobne DTO dla response i request - Czy jest jakiś sprytny sposób zablokowania pól przed edycją, oprócz private set i DTO, np. jeśli chcemy, żeby jakieś pola nie mogły być edytowane patch'em?
             logger.LogInformation("Calling patch for the following object with id = {0} ", id);
             try
             {
@@ -176,7 +176,7 @@ namespace RestApiTest.Controllers
             }
             catch (Exception)
             {
-                return NotFound(id); //?? W tym przypadku powinno być zwracane NotFound, czy NotModified?
+                return NotFound(id); //[Note] - notFound, nie ma w bieżącej wersji middlewere'a o nazwie notModified - W tym przypadku powinno być zwracane NotFound, czy NotModified?
             }
         }
 
@@ -216,7 +216,7 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> Delete(int id)
         {
-            var post = await repository.GetAsync(id); //?? czy w praktyce tak się robi, czy raczej od razu próbować usunąć dla lepszej wydajności?
+            var post = await repository.GetAsync(id); //[Note] - potencjalnie zawsze można usuwać od razu - czy w praktyce tak się robi, czy raczej od razu próbować usunąć dla lepszej wydajności?
             if (post == null)
             {
                 logger.LogWarning("Element with given ID doesn't exist - nothing is deleted");
@@ -251,8 +251,22 @@ namespace RestApiTest.Controllers
 //??
 
 //Zadanie 12.06
-//TODO: usunąć nullable z encji w Core.Models i oznaczyć jako required
+//Done: usunąć nullable z encji w Core.Models i oznaczyć jako required
 //Done: Implementacja DTO dla kontrolerów, mają mieć pola nullowalne. DTO ma nie mieć pola 'ModifiedDate' //[Note] - DTO i encje są modelami danych, ale DTO jest uproszczony, na poziomie tylko kontrolera, a encja jest modelem pełnym, domenowym
 //Done: dodać w kontrolerach implementację akcji patch dla aktualizacji tylko określonych pól, jeśli nie są nullami
 //TODO: [Done] wyszukiwanie postów po tytule
 //TODO: [Done] pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)
+
+//Zadanie z 24.07
+//TODO: tworzenie danych tymczasowych / początkowych przenieść do startup'u (wzorzec inicjalizacji bazy danych)
+//TODO: po inicjalizacji bazy danych w startup'ie wymuszać programistycznie utworzenie migracji + przed rozpoczęciem jakichkolwiek akcji - wywoływać programistycznie aktualizację bazy do właściwego stanu
+//TODO: z poziomu kontrolerów wywoływać service walidujący //?? czy ten projekt ma w praktyce rzeczywiście być service'm cały czas działającym w tle, czy wystarczy zwykły obiekt powoływany czasowo tylko na potrzeby walidacji?
+//TODO: jeśli property przekazane do put / patch jest błędne, zwracać bad request z poziomu kontrolera
+//TODO: ApplyPatch przenieść do klasy bazowego repo i zmienić nazwę na Update tylko z przeładowaniem (żeby patch i put korzystały z tej samej metody, ale osiąganej z różnych adresów)
+//TODO: do walidacji kontrolerów używać FluentValidator
+//TODO: paging - poprawić routing dla spójności: api/blogposts/pages/
+//TODO: paging z HATEOS'a - zwracać url do następnej strony - obiekt PageDTO (kolekcja encji dla danej strony, nextPage, totalPages)
+//TODO: paging - przeładowany routing -> api/blogpost/{id} do zwracania konkretnego posta i api/blogpost/pages/{pageNo} do zwracania strony
+//TODO: ilość postów na page przekazywać jako parametr do metody w kontrolerze i z kontrolera do repo [Note] - tak się robi w praktyce, nawet jeśli np. frontend limituje to do określonej liczby, to nie blokuje się użytkownikowi zazwyczaj możliwości jawnego podania dowolnej liczby (co najwyżej nakłada się ograniczenie na maksymalną liczbę, jaką może podać)
+//?? Jak działa niejawne przekazywanie parametrów, jeśli z formularza html określi się coś, jako niewidoczne w request'cie, bo nie przypominam sobie, żeby tam się definiowało jakieś szyfrowanie itp. domyślnie
+//TODO: [future] - generyczne filtorwanie - dać możliwość definiowania większej ilości filtrów w parametrze URL, np. rozdzielanych przez | i potem odpowiednio parsowanych i aplikowanych
