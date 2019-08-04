@@ -28,15 +28,15 @@ namespace RestApiTest.Controllers
             //logger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" }); //Przykład możliwości automatycznego serializowania obiektów przez Serilog'a
             this.repository = repository;
             mappingProvider = mapper;
-            var posts = repository.GetAllBlogPostsAsync();
-            if (posts == null || posts.Count() == 0)
-            {
-                var sampleData = CreateSampleData(5);
-                foreach (var post in sampleData)
-                {
-                    repository.AddAsync(post);
-                }
-            }
+            //var posts = repository.GetAllBlogPostsAsync();
+            //if (posts == null || posts.Count() == 0)
+            //{
+            //    var sampleData = CreateSampleData(5);
+            //    foreach (var post in sampleData)
+            //    {
+            //        repository.AddAsync(post);
+            //    }
+            //}
         }
 
         //GET api/blog
@@ -79,7 +79,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        //TODO: Szukanie po tytułach (adres endpointa: /posts/?title contains) 
+        //Done: Szukanie po tytułach (adres endpointa: /posts/?title contains) 
         //TODO: pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
 
         [HttpGet]
@@ -87,7 +87,7 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetAll()
         {
-            //?? Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielić na osobne metody
+            //[Note] - powinny być osobne metody, które będą procesowały typy z hierarchii zgodnie z założeniami klienta / biznesu - Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielić na osobne metody
             logger.LogInformation("Calling get for all posts");
             var posts = /*await*/ repository.GetAllBlogPostsAsync()/*.ToAsyncEnumerable()*/; //?? Jak to tutaj powinno być zwracane, żeby było asynchroniczne (czy da radę bez IAsyncEnumerablle)?
             long? count = /*await*/ posts?.Count();
@@ -102,16 +102,26 @@ namespace RestApiTest.Controllers
             }
         }
 
-        [HttpGet("/pages/{pageNo}")]
+        //[HttpGet("pages/{pageNo}")]
+        [HttpGet("pages")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetNextChunk(int pageNo)
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
         {
+            if(!Request.Query.ContainsKey("pageNo")
+                || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > 1000)) //TODO: Górny limit postów odczytywać z config'a //?? 
+            {
+                logger.LogWarning("Posts paging bad request");
+                //?? Jakie podejście stosuje się w praktyce przy zbyt dużej liczbie podanej do zwrotu - bad request, czy nadpisać tą wartość maksymalną dopuszczalną i zwrócić (chyba to lepsze ze względu na płynność, ale może być niejasne dla użytkownika i być może ujawniać limity systemu potencjalnym atakującym?)
+                return BadRequest();
+            }
+
             logger.LogInformation("Calling get for next chunk");
-            var posts = /*await*/ repository.GetBlogPostsChunkAsync(pageNo);
+            var posts = /*await*/ repository.GetBlogPostsChunkAsync(pageNo, postsPerPage);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
-            {
+            { //TODO: Przygotować do zwrotu obiekt PageDTO
                 return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts));
             }
             else
@@ -122,12 +132,22 @@ namespace RestApiTest.Controllers
         }
 
         //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
-        [HttpGet("/api/blogposts/find/{titlePartToFind}")]
+        //[HttpGet("find/{titlePartToFind}")]
+        [HttpGet("find")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle(string titlePartToFind) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
-        {
-            logger.LogInformation("Calling get for all posts containing in title: {0}", titlePartToFind); //TODO: takie rzeczy tylko jako debug
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle([FromQuery]string titlePartToFind) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
+        { //?? Czy można jakoś wymusić, żeby znaki specjalne były odpowiednio parsowane? Jak wpiszę w przeglądarce ?... entry # to nie koduje i nie przesyła tego #, dopiero go przekazuje jak sam podam entry%20%23 (chociaż spacje koduje prawidłowo od razu)?
+
+            //if(string.IsNullOrWhiteSpace(Request[""].QueryString("titlePartToFind")))
+            if(!Request.Query.ContainsKey("titlePartToFind")) //[Note] - można w parametrze robić binding do obiektu: np. GetByTitle([FromQuery]ModelObject paramName) i potem sprawdzać if(ModelState.IsValid) -> to sprawdzi, czy parametr podany w query da radę być zmapowany na właściwość obiektu
+            {
+                logger.LogWarning("The find request contained invalid parameter");
+                return BadRequest(); //?? Czy w BadRequest zwraca się coś informacyjnego (np. treść/url requestu)?
+            }
+
+            logger.LogDebug("Calling get for all posts containing in title: {0}", titlePartToFind); //[Note] - Done - takie rzeczy tylko jako debug
             var posts = /*await*/ repository.GetPostsContaingInTitle(titlePartToFind);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
@@ -140,7 +160,7 @@ namespace RestApiTest.Controllers
                 return NoContent();
             }
         }
-
+        
         // POST api/blog
         [HttpPost]
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty
@@ -189,6 +209,11 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status409Conflict)]
         public async Task<ActionResult> Put(long id, [FromBody] BlogPostDTO updatedPost)
         {
+            //if(!ModelState.IsValid) //[Note] - nie wystarczy, bo model traktowany jest jako prawidłowy chyba, że jakieś właściwości byłyby ustawione jako required - Czy to wystarczy do sprawdzenia poprawności (np. zamiast service'u walidującego)
+            //{
+            //    return BadRequest();
+            //}
+
             //[Note] zwraca się zawsze stan aktualny z bazy, a nie obiekt z parametrów
             logger.LogInformation("Calling put for object: {@0}", updatedPost);
             try
@@ -254,8 +279,7 @@ namespace RestApiTest.Controllers
 //Done: usunąć nullable z encji w Core.Models i oznaczyć jako required
 //Done: Implementacja DTO dla kontrolerów, mają mieć pola nullowalne. DTO ma nie mieć pola 'ModifiedDate' //[Note] - DTO i encje są modelami danych, ale DTO jest uproszczony, na poziomie tylko kontrolera, a encja jest modelem pełnym, domenowym
 //Done: dodać w kontrolerach implementację akcji patch dla aktualizacji tylko określonych pól, jeśli nie są nullami
-//TODO: [Done] wyszukiwanie postów po tytule
-//TODO: [Done] pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)
+//Done: pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)
 
 //Zadanie z 24.07
 //TODO: tworzenie danych tymczasowych / początkowych przenieść do startup'u (wzorzec inicjalizacji bazy danych)
@@ -264,7 +288,7 @@ namespace RestApiTest.Controllers
 //TODO: jeśli property przekazane do put / patch jest błędne, zwracać bad request z poziomu kontrolera
 //TODO: ApplyPatch przenieść do klasy bazowego repo i zmienić nazwę na Update tylko z przeładowaniem (żeby patch i put korzystały z tej samej metody, ale osiąganej z różnych adresów)
 //TODO: do walidacji kontrolerów używać FluentValidator
-//TODO: paging - poprawić routing dla spójności: api/blogposts/pages/
+//Done: paging - poprawić routing dla spójności: api/blogposts/pages/
 //TODO: paging z HATEOS'a - zwracać url do następnej strony - obiekt PageDTO (kolekcja encji dla danej strony, nextPage, totalPages)
 //TODO: paging - przeładowany routing -> api/blogpost/{id} do zwracania konkretnego posta i api/blogpost/pages/{pageNo} do zwracania strony
 //TODO: ilość postów na page przekazywać jako parametr do metody w kontrolerze i z kontrolera do repo [Note] - tak się robi w praktyce, nawet jeśli np. frontend limituje to do określonej liczby, to nie blokuje się użytkownikowi zazwyczaj możliwości jawnego podania dowolnej liczby (co najwyżej nakłada się ograniczenie na maksymalną liczbę, jaką może podać)

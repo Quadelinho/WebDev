@@ -15,6 +15,6 @@ namespace RestApiTest.Core.Interfaces.Repositories
         IQueryable<BlogPost> GetAllBlogPostsAsync(); //[Note] - ma sens jeśli nie chcę czegoś udostępniać wszędzie, ale równie dobrze taka metoda mogłaby być też w interfejsie IRepo, ale nie wystawiana poza repozytorium, gdybym nie chciał jej używać (przy czym wtedy mam pisany kod, który z założenia nie będzie używany) - Czy taka forma ma sens, bo wygląda to na trochę bzdurny interfejs. Czy warto w ogóle dodać np. interface rozszerzający IBase o metodę GetAll?
         IQueryable<BlogPost> GetPostsContaingInTitle(string textToSearch);
  //       /*Task<*/IQueryable<BlogPost>/*>*/ GetBlogPostsChunkAsync(int pageNo);
-        IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo);
+        IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage);
     }
 }

@@ -15,7 +15,7 @@ namespace RestApiTest.Infrastructure.Repositories
     public class BlogPostRepository : IBlogPostRepository
     {
         private ForumContext context;
-        private const int postsOnPage = 2;
+        
         public BlogPostRepository(ForumContext context)
         {
             this.context = context;
@@ -174,7 +174,7 @@ namespace RestApiTest.Infrastructure.Repositories
             IQueryable<BlogPost> temp = null;
             if(String.IsNullOrWhiteSpace(textToSearch))
             {
-                temp = context.Posts; //TODO: uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania)
+                temp = context.Posts; //[Note] - można uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania - lazy loading, gdzie typy referncyjne w modelu muszą być zdefiniowane jako virtual)
             }
             else
             {
@@ -186,17 +186,17 @@ namespace RestApiTest.Infrastructure.Repositories
                 .Include(p => p.Votes);
         }
 
-        public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo)
+        public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
         {
             IQueryable<BlogPost> postsChunk = Enumerable.Empty<BlogPost>().AsQueryable();//null;
             long totalPostsCount = context.Posts.Count();
             if(totalPostsCount > 0)
             {
-                int count = pageNo * postsOnPage;
+                int count = pageNo * postsPerPage;
                 postsChunk = context.Posts.Include(p => p.Author)
                     .Include(p => p.Comments)
                     .Include(p => p.Votes)
-                    .Skip(count).Take(postsOnPage);
+                    .Skip(count).Take(postsPerPage);
             }
             return postsChunk;
         }

@@ -21,7 +21,7 @@ namespace RestApiTest
         private IMapper mapper;
         
         //[Note] - tutaj, w ConfigureServices - gdzie definiuje się mapowanie tego automatycznego Dependency Injection, np. kiedy mam kilka implementacji danego interfejsu? Jawnie w ConfigureServices, a domyślne mapowanie można jakoś podejrzeć?
-        public Startup(/*IConfiguration configuration,*/ ILogger<ForumContext> log, IHostingEnvironment environment) //[Note] Jest tu już wstrzykiwany obiekt logger'a - Atomatyczne dependency injection jest w stanie to ogarnąć
+        public Startup(/*IConfiguration configuration,*/ ILogger<ForumContext> log, IHostingEnvironment environment/*, IDbInitializer dbInitializer*/) //[Note] Jest tu już wstrzykiwany obiekt logger'a - Atomatyczne dependency injection jest w stanie to ogarnąć
         {
             //Configuration = configuration;
             var configBuilder = new ConfigurationBuilder();
@@ -31,6 +31,8 @@ namespace RestApiTest
             Configuration = configBuilder.Build();
 
             logger = log;
+            IDbInitializer dbInitializer = new DatabaseInitializer(); //?? Czy ten inicjalizator bazy ma tutaj być podany jawnie? Bo nie udało mi się go zarejestrować do wywołania automatycznie przez dependency injection
+            dbInitializer.PrepareSampleData();
         }
 
         public IConfiguration Configuration { get; }
@@ -43,6 +45,8 @@ namespace RestApiTest
             services.AddSingleton<IConfiguration>(Configuration);
             services.AddTransient<IBlogPostRepository, BlogPostRepository>();  //[Note] - może przez dziedziczenie po wspólnych interface'ach, bo normalnie powinno to działać bez jawnej deklaracji - Dlaczego muszę wszystkie te repozytoria rejestrować jawnie dla DI?
             services.AddTransient<ICommentRepository, CommentRepository>();
+            services.AddTransient<IForumUserRepository, ForumUserRepository>();
+            services.AddTransient<IDbInitializer, DatabaseInitializer>();
             ConfigureAutoMapper();
             services.AddSingleton<IMapper>(mapper);
 

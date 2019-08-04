@@ -20,7 +20,7 @@ namespace RestApiTest.Core.Models
         [StringLength(25, MinimumLength = 3)]
         //[Required] //Wykomentowane na potrzeby prostego tworzenia początkowych danych testowych
         public ForumUser Author { get; set; } //[Note] AutoMapper jest w stanie to ogarnąć, jeśli ma zdefiniowane w konfiguracji mapowanie obiektu tej klasy - wtedy w odpowiednim mapowanym obiekcie (np. BlogPostDTO) z automatu zamieniłby referencję do ForumUsers na właściwości określone w obiekcie ForumUserDTO
-                                                //TODO: Sprawdzić, czy jeśli AutoMapper nie miałby zdefiniowanego mapowania na ForumUserDTO (ani nic w ogóle dla ForumUser, to czy wstawiłby tu właściwości klasy ForumUser?
+                                                //[Note] - nie, bez jawnie zdefiniowanej konfiguracji nie zrobił by nic, bo musi mieć zdefiniowane czego ma używać przy mapowaniu - Sprawdzić, czy jeśli AutoMapper nie miałby zdefiniowanego mapowania na ForumUserDTO (ani nic w ogóle dla ForumUser, to czy wstawiłby tu właściwości klasy ForumUser?
                                                 //TODO: Sprawdzić, jak by się zachował przy takim automatycznym mapowaniu typów zagnieżdżonych, gdyby taki typ wewnętrzny miał właściwość o takiej samej nazwie jak nadrzędny (np. Title z posta i Title z Comment)?
                                                 //[Note - potencjalnie trzeba skonfigurować - sprawdzić.] Skoro AutoMapper ogarnia z automatu zmienne referencyjne wstawiając pola, to co zrobi dla listy obiektów (np. Comments)?
 
@@ -29,7 +29,7 @@ namespace RestApiTest.Core.Models
             //a po prostu takie "automatyczne pola" jak np. modified po prostu i tak się zawsze nadpisuje z poziomu kodu?
         public DateTime Modified //{ get; set; } //= DateTime.Now.ToLongDateString(); //?? Zmiana typu pola nie została wykryta przez komendę Update-Database jako modyfikacja do utowrzenia migracji
         {
-            get; //TODO: [DONE, z użyciem private set] ustawianie Modified zrobić na triggerach w bazie i getter'ami zawsze zwracać aktualny stan z bazy //[Note] - bezpośrednio w migracjach raczej nie, trzeba to osobno manualnie zdefiniować - Czy tego typu elementy jak triggery da się też odzwierciedlić w tych plikach tworzących migracje bazy? 
+            get; //[DONE, z użyciem private set] ustawianie Modified zrobić na triggerach w bazie i getter'ami zawsze zwracać aktualny stan z bazy //[Note] - bezpośrednio w migracjach raczej nie, trzeba to osobno manualnie zdefiniować - Czy tego typu elementy jak triggery da się też odzwierciedlić w tych plikach tworzących migracje bazy? 
             private set;
         }
         public /*virtual*/ ICollection<Comment> Comments { get; set; } //[Note] - jeśli kolekcja referencyjna jest zdefiniowana jako virtual - działa automatycznie lazy loading w EF -> zależności są ładowane automatycznie przy pierwszym odwołaniu (https://docs.microsoft.com/en-us/ef/ef6/querying/related-data)

@@ -102,9 +102,9 @@ namespace RestApiTest.Controllers
             return Ok();
         }
 
-        //TODO: uporządkować routing do endpoint'ów, żeby był spójny w ramach całej aplikacji
+        //Done: uporządkować routing do endpoint'ów, żeby był spójny w ramach całej aplikacji
         //[Note] - jeśli zaczyna się od / w routingiu to usuwa to co miał wcześniej zdefiniowane - Nie widzi tutaj nazwy controller'a automatycznie - jeśli nie podałem poniżej jawnie /comment/ to metoda była wywoływana przy wywołaniu get z BlogPost/id
-        [HttpGet("/posts/{id}/comments/", Name = "GetAllCommentsForPost")] //[Note] Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //Done: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza) - dokumentacja: https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-2.2#attribute-routing
+        [HttpGet("posts/{id}/comments/", Name = "GetAllCommentsForPost")] //[Note] Jak tu powinien wyglądać routing, żeby dało się coś takiego wywołać? //Done: składnia definiowania routingu -> po id - powinno być coś takiego jak posts/id/comments/ (zgodnie z zasadmi rest'a, żeby nie sugerowało, że to id komentarza) - dokumentacja: https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-2.2#attribute-routing
         [ProducesResponseType(typeof(IEnumerable<CommentDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<CommentDTO>>> GetAllCommentsForPost(long postId)
@@ -123,7 +123,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        [HttpGet("/users/{userId}/comments/", Name = "GetAllCommentsForUser")]
+        [HttpGet("users/{userId}/comments/", Name = "GetAllCommentsForUser")]
         [ProducesResponseType(typeof(IEnumerable<CommentDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<ActionResult<IEnumerable<CommentDTO>>> GetAllCommentsForUser(long userId/*, [FromBody] bool? includeApproved, bool? includeNotApproved*/)
@@ -142,7 +142,8 @@ namespace RestApiTest.Controllers
             }
         }
 
-        [HttpPut("/comments/{id}")]
+        //[HttpPut("comments/{id}")]
+        [HttpPut("approve/{id}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> ApproveComment(long id)
@@ -158,7 +159,7 @@ namespace RestApiTest.Controllers
             }
         }
 
-        [HttpPut("/comments/markSolution/{id}")]
+        [HttpPut("markSolution/{id}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> MarkCommentAsSolution(long id)
