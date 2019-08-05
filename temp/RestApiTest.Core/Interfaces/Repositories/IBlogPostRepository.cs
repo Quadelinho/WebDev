@@ -16,5 +16,7 @@ namespace RestApiTest.Core.Interfaces.Repositories
         IQueryable<BlogPost> GetPostsContaingInTitle(string textToSearch);
  //       /*Task<*/IQueryable<BlogPost>/*>*/ GetBlogPostsChunkAsync(int pageNo);
         IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage);
+
+        decimal GetTotalPostsCount();
     }
 }

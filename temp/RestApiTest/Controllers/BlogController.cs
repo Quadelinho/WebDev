@@ -10,6 +10,7 @@ using RestApiTest.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace RestApiTest.Controllers
@@ -107,7 +108,8 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
+        //public async Task<ActionResult<IEnumerable</*BlogPostDTO*/PageDTO<BlogPostDTO>>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
+        public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
         {
             if(!Request.Query.ContainsKey("pageNo")
                 || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > 1000)) //TODO: Górny limit postów odczytywać z config'a //?? 
@@ -121,8 +123,16 @@ namespace RestApiTest.Controllers
             var posts = /*await*/ repository.GetBlogPostsChunkAsync(pageNo, postsPerPage);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
-            { //TODO: Przygotować do zwrotu obiekt PageDTO
-                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts));
+            { //TODO: Done - Przygotować do zwrotu obiekt PageDTO
+                decimal totalPages = Math.Ceiling(repository.GetTotalPostsCount() / postsPerPage);
+                StringBuilder urlBuilder = new StringBuilder("https://").Append(Request.Host);
+                urlBuilder.Append(Request.Path).AppendFormat("?pageNo={0}&postsPerPage={1}", pageNo + 1 >= totalPages ? pageNo : ++pageNo, postsPerPage); //?? Jak wygląda prawilny sposób generowania url'a dl następnej strony?
+                
+                PageDTO<BlogPostDTO> valueToReturn = new PageDTO<BlogPostDTO>(mappingProvider.ProjectTo<BlogPostDTO>(posts).ToList(),
+                    (int)totalPages,
+                    urlBuilder.ToString());
+
+                return Ok(valueToReturn); //?? Gdzie jeszcze powinny być zwracane url'e, żeby była pełna zgodność z HATEOAS'em?
             }
             else
             {

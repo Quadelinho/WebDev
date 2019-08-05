@@ -186,17 +186,24 @@ namespace RestApiTest.Infrastructure.Repositories
                 .Include(p => p.Votes);
         }
 
+        public decimal GetTotalPostsCount()
+        {
+            return context.Posts.Count();
+        }
+
+        //public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
         public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
         {
             IQueryable<BlogPost> postsChunk = Enumerable.Empty<BlogPost>().AsQueryable();//null;
             long totalPostsCount = context.Posts.Count();
             if(totalPostsCount > 0)
             {
-                int count = pageNo * postsPerPage;
+                int numberOfPostsToTake = postsPerPage > 0 ? postsPerPage : 1;
+                int count = pageNo * numberOfPostsToTake;
                 postsChunk = context.Posts.Include(p => p.Author)
                     .Include(p => p.Comments)
                     .Include(p => p.Votes)
-                    .Skip(count).Take(postsPerPage);
+                    .Skip(count).Take(numberOfPostsToTake);
             }
             return postsChunk;
         }
