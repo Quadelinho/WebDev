@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RestApiTest.Core.DTO;
 using RestApiTest.Core.Interfaces.Repositories;
@@ -22,13 +23,15 @@ namespace RestApiTest.Controllers
         private IBlogPostRepository repository;
         private ILogger<BlogController> logger;
         private IMapper mappingProvider;
+        private IConfiguration configuration; 
 
-        public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment, IMapper mapper)
+        public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment, IMapper mapper, IConfiguration configuration)
         {
             logger = log;
             //logger.LogError("Sample error {0}, {@1}", environment, new { value = 1, value2 ="test" }); //Przykład możliwości automatycznego serializowania obiektów przez Serilog'a
             this.repository = repository;
             mappingProvider = mapper;
+            this.configuration = configuration;
             //var posts = repository.GetAllBlogPostsAsync();
             //if (posts == null || posts.Count() == 0)
             //{
@@ -111,8 +114,9 @@ namespace RestApiTest.Controllers
         //public async Task<ActionResult<IEnumerable</*BlogPostDTO*/PageDTO<BlogPostDTO>>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
         public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
         {
+            int maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //?? Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
             if(!Request.Query.ContainsKey("pageNo")
-                || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > 1000)) //TODO: Górny limit postów odczytywać z config'a //?? 
+                || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //Done: Górny limit postów odczytywać z config'a //?? 
             {
                 logger.LogWarning("Posts paging bad request");
                 //?? Jakie podejście stosuje się w praktyce przy zbyt dużej liczbie podanej do zwrotu - bad request, czy nadpisać tą wartość maksymalną dopuszczalną i zwrócić (chyba to lepsze ze względu na płynność, ale może być niejasne dla użytkownika i być może ujawniać limity systemu potencjalnym atakującym?)
