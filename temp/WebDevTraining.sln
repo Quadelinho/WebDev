@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RestApiTest.Infrastructure"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RestApiTest.BusinessService", "RestApiTest.BusinessService\RestApiTest.BusinessService.csproj", "{8F24E8F0-70F4-41C4-A2DD-9B0E3A70012A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RestApiTest.Core", "RestApiTest.Core\RestApiTest.Core.csproj", "{DBEE1266-5AB2-4B1E-9E6A-27A962B19FCE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RestApiTest.Core", "RestApiTest.Core\RestApiTest.Core.csproj", "{DBEE1266-5AB2-4B1E-9E6A-27A962B19FCE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RestApiTest.Services", "RestApiTest.Services\RestApiTest.Services.csproj", "{5AB2B25F-7E83-43F7-8DC2-15B6E9367162}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{DBEE1266-5AB2-4B1E-9E6A-27A962B19FCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DBEE1266-5AB2-4B1E-9E6A-27A962B19FCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DBEE1266-5AB2-4B1E-9E6A-27A962B19FCE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5AB2B25F-7E83-43F7-8DC2-15B6E9367162}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AB2B25F-7E83-43F7-8DC2-15B6E9367162}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AB2B25F-7E83-43F7-8DC2-15B6E9367162}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AB2B25F-7E83-43F7-8DC2-15B6E9367162}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

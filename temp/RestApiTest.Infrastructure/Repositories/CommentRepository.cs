@@ -10,16 +10,16 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
 {
-    public class CommentRepository : ICommentRepository //[Note] - konkretny, nie base, nawet gdyby miał być pusty - Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
+    public class CommentRepository : BaseRepository<Comment>, ICommentRepository //[Note] - konkretny, nie base, nawet gdyby miał być pusty - Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
     {
-        private ForumContext context;
+        //private ForumContext context;
 
-        public CommentRepository(ForumContext context)
+        public CommentRepository(ForumContext context) : base(context)
         {
-            this.context = context;
+            //this.context = context;
         }
 
-        public async Task<Comment> AddAsync(Comment objectToAdd)
+        public override async Task<Comment> AddAsync(Comment objectToAdd)
         {
             if(objectToAdd == null)
             {
@@ -43,7 +43,7 @@ namespace RestApiTest.Infrastructure.Repositories
             return objectToAdd;
         }
 
-        public async Task<Comment> ApplyPatchAsync(Comment objectToModify, List<PatchDTO> propertiesToUpdate)
+        public override async Task<Comment> ApplyPatchAsync(Comment objectToModify, List<PatchDTO> propertiesToUpdate)
         {
             var properties = propertiesToUpdate.ToDictionary(p => p.PropertyName, p => p.PropertyValue);
             if (properties.ContainsKey("Modified"))
@@ -59,7 +59,7 @@ namespace RestApiTest.Infrastructure.Repositories
             return entityEntry.Entity;
         }
 
-        public async Task DeleteAsync(long id)
+        public override async Task DeleteAsync(long id)
         {
             Comment comment = await context.PostComments.FindAsync(id);
             if(comment != null)
@@ -93,12 +93,12 @@ namespace RestApiTest.Infrastructure.Repositories
             //return author.UsersComments; //[Note] - odwołanie bezpośrednio do kontekstu działa od razu, bez koniecznonści osobnego definiowania ładowania zależności - Sprawdzić co będzie lepsze (sprawdzić query)
         }
 
-        public async Task<Comment> GetAsync(long id)
+        public override async Task<Comment> GetAsync(long id)
         {
             return await context.PostComments.FindAsync(id);
         }
 
-        public async Task<Comment> UpdateAsync(Comment objectToUpdate)
+        public override async Task<Comment> UpdateAsync(Comment objectToUpdate)
         {
             if (objectToUpdate == null)
             {

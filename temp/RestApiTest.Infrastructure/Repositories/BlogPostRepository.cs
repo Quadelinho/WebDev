@@ -12,16 +12,16 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
 { //[Note] - nie nie, musi. - Czy każda klasa modelu musi / powinna mieć swoje pokrycie w klasie Repository,czy np. operacje na komentarzach mogą być z poziomu BlogPostRepository (bo komentarze nie mogą przecież być procesowane samodzielnie, w oderwaniu od postów)
-    public class BlogPostRepository : IBlogPostRepository
+    public class BlogPostRepository : BaseRepository<BlogPost>, IBlogPostRepository
     {
-        private ForumContext context;
+        //private ForumContext context;
         
-        public BlogPostRepository(ForumContext context)
+        public BlogPostRepository(ForumContext context) : base(context)
         {
-            this.context = context;
+            //this.context = context;
         }
 
-        public async Task<BlogPost> AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
+        public override async Task<BlogPost> AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
             if (objectToAdd == null)
             {
@@ -41,7 +41,7 @@ namespace RestApiTest.Infrastructure.Repositories
             return objectToAdd;
         }
 
-        public async Task DeleteAsync(long id)
+        public override async Task DeleteAsync(long id)
         {
             BlogPost postToRemove = await context.Posts.FindAsync(id);
             if (postToRemove != null)
@@ -62,7 +62,7 @@ namespace RestApiTest.Infrastructure.Repositories
                 //.async();// LoadAsync();
         }
 
-        public async Task<BlogPost> GetAsync(long id)
+        public override async Task<BlogPost> GetAsync(long id)
         {
             //return await context.Posts.Include(p => p.Author).FindAsync(id);
             return await context.Posts.Where(p => p.Id == id)
@@ -72,7 +72,7 @@ namespace RestApiTest.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<BlogPost> UpdateAsync(BlogPost objectToUpdate)
+        public override async Task<BlogPost> UpdateAsync(BlogPost objectToUpdate)
         {
             if (objectToUpdate == null)
             {
@@ -149,7 +149,7 @@ namespace RestApiTest.Infrastructure.Repositories
             }
         }
 
-        public async Task<BlogPost> ApplyPatchAsync(BlogPost objectToModify, List<PatchDTO> propertiesToUpdate)
+        public override async Task<BlogPost> ApplyPatchAsync(BlogPost objectToModify, List<PatchDTO> propertiesToUpdate)
         {
             var properties = propertiesToUpdate.ToDictionary(p => p.PropertyName, p => p.PropertyValue);
             if(properties.ContainsKey("Modified"))

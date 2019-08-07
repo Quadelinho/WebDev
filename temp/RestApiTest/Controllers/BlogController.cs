@@ -84,7 +84,7 @@ namespace RestApiTest.Controllers
         }
 
         //Done: Szukanie po tytułach (adres endpointa: /posts/?title contains) 
-        //TODO: pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
+        //TODO: Done pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
@@ -97,7 +97,7 @@ namespace RestApiTest.Controllers
             long? count = /*await*/ posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //[Note] sygnatura metody powinna być bez queryable, ale zwracać można bez problemu - Czy tutaj mogę po prostu zwracać IQueryable skoro ten interface dziedziczy po IEnumerable, czy jednak mam użyć np. ToList i zwracać listę dla pełnej zgodności z IEnumerable?
+                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); 
             }
             else
             {
@@ -107,19 +107,19 @@ namespace RestApiTest.Controllers
         }
 
         //[HttpGet("pages/{pageNo}")]
-        [HttpGet("pages")]
+        [HttpGet("pages", Name = "pagedPosts")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         //public async Task<ActionResult<IEnumerable</*BlogPostDTO*/PageDTO<BlogPostDTO>>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
         public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
         {
-            int maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //?? Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
+            int maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //[Note - można dynamicznie - parametr w starup, przy definiowaniu plików ustawień - jeśli true, będzie zaczytywany dynamicznie, nawet jeśli zostanie zmieniony w locie (ryzyko - może doprowadzić do problemów z indempotencją - jeśli ktoś podmieni plik w trakcie, to samo zapytanie może dać różne wyniki. Dodatkowo potem mogą być fałszywe wpisy w logach (np. jeśli ktoś zmieni na wartość generującą błąd, a potem przywróci wartość właściwą)] - Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
             if(!Request.Query.ContainsKey("pageNo")
-                || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //Done: Górny limit postów odczytywać z config'a //?? 
+                || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //Done: Górny limit postów odczytywać z config'a
             {
                 logger.LogWarning("Posts paging bad request");
-                //?? Jakie podejście stosuje się w praktyce przy zbyt dużej liczbie podanej do zwrotu - bad request, czy nadpisać tą wartość maksymalną dopuszczalną i zwrócić (chyba to lepsze ze względu na płynność, ale może być niejasne dla użytkownika i być może ujawniać limity systemu potencjalnym atakującym?)
+                //[Note] - Fail fast -> lepiej od razu zwracać błąd niż robić jakieś akcje, które mogą być nieoczekiwane - Jakie podejście stosuje się w praktyce przy zbyt dużej liczbie podanej do zwrotu - bad request, czy nadpisać tą wartość maksymalną dopuszczalną i zwrócić (chyba to lepsze ze względu na płynność, ale może być niejasne dla użytkownika i być może ujawniać limity systemu potencjalnym atakującym?)
                 return BadRequest();
             }
 
@@ -127,16 +127,15 @@ namespace RestApiTest.Controllers
             var posts = /*await*/ repository.GetBlogPostsChunkAsync(pageNo, postsPerPage);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
-            { //TODO: Done - Przygotować do zwrotu obiekt PageDTO
+            { //Done - Przygotować do zwrotu obiekt PageDTO
                 decimal totalPages = Math.Ceiling(repository.GetTotalPostsCount() / postsPerPage);
-                StringBuilder urlBuilder = new StringBuilder("https://").Append(Request.Host);
-                urlBuilder.Append(Request.Path).AppendFormat("?pageNo={0}&postsPerPage={1}", pageNo + 1 >= totalPages ? pageNo : ++pageNo, postsPerPage); //?? Jak wygląda prawilny sposób generowania url'a dl następnej strony?
                 
                 PageDTO<BlogPostDTO> valueToReturn = new PageDTO<BlogPostDTO>(mappingProvider.ProjectTo<BlogPostDTO>(posts).ToList(),
-                    (int)totalPages,
-                    urlBuilder.ToString());
+                    (int)totalPages, 
+                    Url.Link("pagedPosts", new { pageNo = ++pageNo, postsPerPage = postsPerPage  }));
+                    //alternatywnie można użyć z nullem zamiast nazwy, żeby brał bieżącą akcję -> Url.Link(null, new { pageNo = ++pageNo, postsPerPage = postsPerPage  }));
 
-                return Ok(valueToReturn); //?? Gdzie jeszcze powinny być zwracane url'e, żeby była pełna zgodność z HATEOAS'em?
+                return Ok(valueToReturn); //[Note] - np. zwracając post'a przekazywać zwrotkę z URL'em do coment'ów - Gdzie jeszcze powinny być zwracane url'e, żeby była pełna zgodność z HATEOAS'em? //TODO: zwracać URL'a do komentarzy
             }
             else
             {
@@ -145,6 +144,7 @@ namespace RestApiTest.Controllers
             }
         }
 
+        //TODO: Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
         //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
         //[HttpGet("find/{titlePartToFind}")]
         [HttpGet("find")]
@@ -152,13 +152,13 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle([FromQuery]string titlePartToFind) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
-        { //?? Czy można jakoś wymusić, żeby znaki specjalne były odpowiednio parsowane? Jak wpiszę w przeglądarce ?... entry # to nie koduje i nie przesyła tego #, dopiero go przekazuje jak sam podam entry%20%23 (chociaż spacje koduje prawidłowo od razu)?
+        { //[Note] - w praktyce osoba pisząca API backend'owe nie powinna się tym przejmować, bo to leży w kwestii używającego API, żeby przekazać właściwie zakodowane znaki. Najlepiej do tesów używać Postmana, bo on to powinien zakodować prawidłowo (przeglądarki nie przesyłają jawnie podanych znaków '#', bo są one używane do określenia ostatnio odwiedzanej pozycji paska przewijania - Czy można jakoś wymusić, żeby znaki specjalne były odpowiednio parsowane? Jak wpiszę w przeglądarce ?... entry # to nie koduje i nie przesyła tego #, dopiero go przekazuje jak sam podam entry%20%23 (chociaż spacje koduje prawidłowo od razu)?
 
             //if(string.IsNullOrWhiteSpace(Request[""].QueryString("titlePartToFind")))
             if(!Request.Query.ContainsKey("titlePartToFind")) //[Note] - można w parametrze robić binding do obiektu: np. GetByTitle([FromQuery]ModelObject paramName) i potem sprawdzać if(ModelState.IsValid) -> to sprawdzi, czy parametr podany w query da radę być zmapowany na właściwość obiektu
             {
                 logger.LogWarning("The find request contained invalid parameter");
-                return BadRequest(); //?? Czy w BadRequest zwraca się coś informacyjnego (np. treść/url requestu)?
+                return BadRequest(new { errorCode = 2, errorMessage = "testc"}); //[Note] - Tak, najlepiej zwracać jakiś obiekt / model z informacją co było źle, żeby użytkownik API był ewentualnie w stanie poprawić request'a - Czy w BadRequest zwraca się coś informacyjnego (np. treść/url requestu)?
             }
 
             logger.LogDebug("Calling get for all posts containing in title: {0}", titlePartToFind); //[Note] - Done - takie rzeczy tylko jako debug
@@ -298,13 +298,15 @@ namespace RestApiTest.Controllers
 //Zadanie z 24.07
 //TODO: tworzenie danych tymczasowych / początkowych przenieść do startup'u (wzorzec inicjalizacji bazy danych)
 //TODO: po inicjalizacji bazy danych w startup'ie wymuszać programistycznie utworzenie migracji + przed rozpoczęciem jakichkolwiek akcji - wywoływać programistycznie aktualizację bazy do właściwego stanu
-//TODO: z poziomu kontrolerów wywoływać service walidujący //?? czy ten projekt ma w praktyce rzeczywiście być service'm cały czas działającym w tle, czy wystarczy zwykły obiekt powoływany czasowo tylko na potrzeby walidacji?
+//TODO: z poziomu kontrolerów wywoływać service walidujący //[Note] - nie, ma to być zwykłe class library - services to po prostu terminologia oznaczająca logikę biznesową - czy ten projekt ma w praktyce rzeczywiście być service'm cały czas działającym w tle, czy wystarczy zwykły obiekt powoływany czasowo tylko na potrzeby walidacji?
 //TODO: jeśli property przekazane do put / patch jest błędne, zwracać bad request z poziomu kontrolera
 //TODO: ApplyPatch przenieść do klasy bazowego repo i zmienić nazwę na Update tylko z przeładowaniem (żeby patch i put korzystały z tej samej metody, ale osiąganej z różnych adresów)
 //TODO: do walidacji kontrolerów używać FluentValidator
 //Done: paging - poprawić routing dla spójności: api/blogposts/pages/
-//TODO: paging z HATEOS'a - zwracać url do następnej strony - obiekt PageDTO (kolekcja encji dla danej strony, nextPage, totalPages)
-//TODO: paging - przeładowany routing -> api/blogpost/{id} do zwracania konkretnego posta i api/blogpost/pages/{pageNo} do zwracania strony
-//TODO: ilość postów na page przekazywać jako parametr do metody w kontrolerze i z kontrolera do repo [Note] - tak się robi w praktyce, nawet jeśli np. frontend limituje to do określonej liczby, to nie blokuje się użytkownikowi zazwyczaj możliwości jawnego podania dowolnej liczby (co najwyżej nakłada się ograniczenie na maksymalną liczbę, jaką może podać)
-//?? Jak działa niejawne przekazywanie parametrów, jeśli z formularza html określi się coś, jako niewidoczne w request'cie, bo nie przypominam sobie, żeby tam się definiowało jakieś szyfrowanie itp. domyślnie
+//Done: paging z HATEOS'a - zwracać url do następnej strony - obiekt PageDTO (kolekcja encji dla danej strony, nextPage, totalPages)
+//TODO: paging - przeładowany routing -> api/blogpost/{id} do zwracania konkretnego posta i api/blogpost/pages/{pageNo} do zwracania strony -> usunąć pages z routingu, zawsze zwracać w formie stronicowanej, jeśli nie podano parametrów, zwracać z domyślnymi ustawieniami stronicowania
+//Done: ilość postów na page przekazywać jako parametr do metody w kontrolerze i z kontrolera do repo [Note] - tak się robi w praktyce, nawet jeśli np. frontend limituje to do określonej liczby, to nie blokuje się użytkownikowi zazwyczaj możliwości jawnego podania dowolnej liczby (co najwyżej nakłada się ograniczenie na maksymalną liczbę, jaką może podać)
+//[Note] - to jest domyślnie ukrywane w ciele zapytania POST -> ciało jest automatycznie hash'owane i nic z elementów wysyłanych POSTem nie leci w postaci jawnej - Jak działa niejawne przekazywanie parametrów, jeśli z formularza html określi się coś, jako niewidoczne w request'cie, bo nie przypominam sobie, żeby tam się definiowało jakieś szyfrowanie itp. domyślnie
 //TODO: [future] - generyczne filtorwanie - dać możliwość definiowania większej ilości filtrów w parametrze URL, np. rozdzielanych przez | i potem odpowiednio parsowanych i aplikowanych
+
+//TODO: pageowanie od razu w get;

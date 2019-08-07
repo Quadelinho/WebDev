@@ -31,8 +31,7 @@ namespace RestApiTest
             Configuration = configBuilder.Build();
 
             logger = log;
-            IDbInitializer dbInitializer = new DatabaseInitializer(); //?? Czy ten inicjalizator bazy ma tutaj być podany jawnie? Bo nie udało mi się go zarejestrować do wywołania automatycznie przez dependency injection
-            dbInitializer.PrepareSampleData();
+            
         }
 
         public IConfiguration Configuration { get; }
@@ -84,6 +83,8 @@ namespace RestApiTest
             {
                 //app.UseDeveloperExceptionPage();
                 app.UseExceptionHandler("/api/Error");
+                IDbInitializer dbInitializer = new DatabaseInitializer(); //?? Czy ten inicjalizator bazy ma tutaj być podany jawnie? Bo nie udało mi się go zarejestrować do wywołania automatycznie przez dependency injection
+                dbInitializer.PrepareSampleData(); //TODO: do Program.cs (żeby było tworzoene na etapie run, a nie strzału service'u) lub po useMVC
             }
             else
             {
