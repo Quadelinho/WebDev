@@ -2,6 +2,6 @@
 {
     public interface IDbInitializer
     {
-        void PrepareSampleData();
+        void PrepareSampleData(ForumContext context, bool skipIfDbNotEmpty);
     }
 }

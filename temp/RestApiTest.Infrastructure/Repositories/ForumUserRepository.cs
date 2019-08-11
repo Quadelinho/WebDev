@@ -18,7 +18,7 @@ namespace RestApiTest.Infrastructure.Repositories
         }
 
         //TODO: implementacja pozostałych repozytoriów i kontrolerów
-        public Task<ForumUser> AddAsync(ForumUser objectToAdd)
+        public Task<ForumUser> AddAsync(ForumUser objectToAdd, Action additionalSteps = null)
         {
             objectToAdd.SetInitialValues();//SetUserRegistrationDate();
 

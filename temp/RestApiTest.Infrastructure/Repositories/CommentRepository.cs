@@ -12,14 +12,15 @@ namespace RestApiTest.Infrastructure.Repositories
 {
     public class CommentRepository : BaseRepository<Comment>, ICommentRepository //[Note] - konkretny, nie base, nawet gdyby miał być pusty - Czy w tym wypadku tak się robi w praktyce dla prostych repo, czy jednak powinien to być jakiś "konkretny" interfejs ICommentRepository?
     {
-        //private ForumContext context;
+        //temp \/
+        private ForumContext context;
 
         public CommentRepository(ForumContext context) : base(context)
         {
             //this.context = context;
         }
 
-        public override async Task<Comment> AddAsync(Comment objectToAdd)
+        public override async Task<Comment> AddAsync(Comment objectToAdd, Action additionalSteps = null)
         {
             if(objectToAdd == null)
             {

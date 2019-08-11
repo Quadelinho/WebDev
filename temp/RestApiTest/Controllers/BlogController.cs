@@ -144,10 +144,11 @@ namespace RestApiTest.Controllers
             }
         }
 
-        //TODO: Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
+        //TODO: paging dla wyników wyszukiwania po tytule
+        //TODO: Done [Note] - nic nie trzeba osobno dodawać w opcjach Startupu, tylko MUSI być '/' między ścieżką endpoint'a, a parametrem, a sam pytajnik musi być po prawej stronie od nazwy parametru - Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
         //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
         //[HttpGet("find/{titlePartToFind}")]
-        [HttpGet("find")]
+        [HttpGet("find/{titlePartToFind?}")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -180,6 +181,8 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty
         public async Task<IActionResult> Post([FromBody] BlogPostDTO postToAdd) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
+            //?? Czy w jakiś sposób mam tutaj przetwarzać typy referencyjne (np. jak z postmana chcę dodać post z autorem już istniejącym, to czy muszę zawsze podawać wszystkie pola, czy mogę podać id?)
+                    //np. mam sprawdzać id autora w DTO i jeśli != 0 to próbować go znaleźć w kontekście i przypisać?
             logger.LogInformation("Calling post for the following object: {@0} ", postToAdd); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
 //           postToAdd.Modified = DateTime.Now.ToLongDateString();
             BlogPost addedPost = await repository.AddAsync(mappingProvider.Map<BlogPostDTO, BlogPost>(postToAdd));

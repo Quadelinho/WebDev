@@ -14,31 +14,42 @@ namespace RestApiTest.Infrastructure.Repositories
 { //[Note] - nie nie, musi. - Czy każda klasa modelu musi / powinna mieć swoje pokrycie w klasie Repository,czy np. operacje na komentarzach mogą być z poziomu BlogPostRepository (bo komentarze nie mogą przecież być procesowane samodzielnie, w oderwaniu od postów)
     public class BlogPostRepository : BaseRepository<BlogPost>, IBlogPostRepository
     {
-        //private ForumContext context;
+        //temp \/
+        private ForumContext context;
         
         public BlogPostRepository(ForumContext context) : base(context)
         {
-            //this.context = context;
+            //temp \/
+            this.context = context;
         }
 
-        public override async Task<BlogPost> AddAsync(BlogPost objectToAdd) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
+        public override async Task<BlogPost> AddAsync(BlogPost objectToAdd, Action additionalSteps = null) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
-            if (objectToAdd == null)
+            return await base.AddAsync(objectToAdd, () => 
             {
-                throw new ArgumentNullException("Failed to insert the post - empty entry, blogPost"); //[Note] - skoro to metoda publiczna, to lepiej robić walidację danych wejściowych też na tym etapie, nawet jeśli miałyby być zwielokrotnione te walidacje - czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
-                                                                                                      //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
-            }
+                bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
+                if (isTitleDuplicate)
+                {
+                    throw new BlogPostsDomainException("Update failed - the post with given title already exists");
+                }
+                objectToAdd.UpdateModifiedDate();
+            });
+            //if (objectToAdd == null)
+            //{
+            //    throw new ArgumentNullException("Failed to insert the post - empty entry, blogPost"); //[Note] - skoro to metoda publiczna, to lepiej robić walidację danych wejściowych też na tym etapie, nawet jeśli miałyby być zwielokrotnione te walidacje - czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
+            //                                                                                          //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
+            //}
 
-            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
-            if (isTitleDuplicate)
-            {
-                throw new BlogPostsDomainException("Update failed - the post with given title already exists");
-            }
+            //bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
+            //if (isTitleDuplicate)
+            //{
+            //    throw new BlogPostsDomainException("Update failed - the post with given title already exists");
+            //}
 
-            objectToAdd.UpdateModifiedDate();
-            await context.Posts.AddAsync(objectToAdd); //[Note] - w rest trzeba zwracać error code + explanation; zależnie czy jest zdefiniowane wymaganie od klienta, jeśli nie - można dla global handlera - Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
-            await context.SaveChangesAsync();
-            return objectToAdd;
+            //objectToAdd.UpdateModifiedDate();
+            //await context.Posts.AddAsync(objectToAdd); //[Note] - w rest trzeba zwracać error code + explanation; zależnie czy jest zdefiniowane wymaganie od klienta, jeśli nie - można dla global handlera - Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
+            //await context.SaveChangesAsync();
+            //return objectToAdd;
         }
 
         public override async Task DeleteAsync(long id)

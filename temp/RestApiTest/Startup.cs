@@ -83,8 +83,11 @@ namespace RestApiTest
             {
                 //app.UseDeveloperExceptionPage();
                 app.UseExceptionHandler("/api/Error");
-                IDbInitializer dbInitializer = new DatabaseInitializer(); //?? Czy ten inicjalizator bazy ma tutaj być podany jawnie? Bo nie udało mi się go zarejestrować do wywołania automatycznie przez dependency injection
-                dbInitializer.PrepareSampleData(); //TODO: do Program.cs (żeby było tworzoene na etapie run, a nie strzału service'u) lub po useMVC
+                LoggerFactory loggerFactory = new LoggerFactory();
+                IDbInitializer dbInitializer = new DatabaseInitializer(loggerFactory.CreateLogger<DatabaseInitializer>()/*app.ApplicationServices.GetService<ILogger<DatabaseInitializer>*/); //?? Jak mogę przekazać logger'a określonego typu do inicjalizatora przez DI?
+                //dbInitializer.PrepareSampleData(app.ApplicationServices.GetRequiredService<ForumContext>(), false); //TODO: do Program.cs (żeby było tworzoene na etapie run, a nie strzału service'u) lub po useMVC
+                //?? Jak przekazać ten context do inicjalizacji bazy? Dostaję cały czas błąd, że nie udaje się znaleźć właściwego powiązania
+                //var t = app.ApplicationServices.CreateScope().ServiceProvider.GetRequiredService<ForumContext>();
             }
             else
             {
