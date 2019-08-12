@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace RestApiTest.Core.Models
 {
-    public class BlogPost : IVotable /*: IMarkable*/ //?? Czy tego typu implementacje powinny być w ramach klasy modelu, czy raczej implementacji repozytorium (BlogPostRepository)?
+    public class BlogPost : IVotable, IIdentifiable /*: IMarkable*/ //?? Czy tego typu implementacje powinny być w ramach klasy modelu, czy raczej implementacji repozytorium (BlogPostRepository)?
     {
         [Required]
         public long Id { get; set; }
@@ -40,7 +40,12 @@ namespace RestApiTest.Core.Models
         //    //Votes.
         //}
 
-        public long GetId()
+        //public long GetId()
+        //{
+        //    return Id;
+        //}
+
+        public long GetIdentifier()
         {
             return Id;
         }

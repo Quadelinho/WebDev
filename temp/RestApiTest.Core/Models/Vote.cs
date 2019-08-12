@@ -1,9 +1,10 @@
-﻿using System;
+﻿using RestApiTest.Core.Interfaces;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace RestApiTest.Core.Models
 {
-    public class Vote
+    public class Vote : IIdentifiable
     {
         [Required]
         public long Id { get; set; }
@@ -17,6 +18,11 @@ namespace RestApiTest.Core.Models
         [Required]
         public ForumUser Voter { get; set; }
         public DateTime Modified { get; set; }
+
+        public long GetIdentifier()
+        {
+            return Id;
+        }
     }
 }
 //Interface: DeleteVote, RegisterVote, UpdateVote, GetVoterName/Details, GetVotedElement

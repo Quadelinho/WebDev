@@ -1,9 +1,10 @@
-﻿using System;
+﻿using RestApiTest.Core.Interfaces;
+using System;
 using System.Collections.Generic;
 
 namespace RestApiTest.Core.Models
 {
-    public class NewsMessage
+    public class NewsMessage : IIdentifiable
     {
         public long Id { get; set; }
         public string Title { get; set; }
@@ -11,5 +12,10 @@ namespace RestApiTest.Core.Models
         public IEnumerable<Tag> Tags { get; set; }
         public DateTime PublishDate { get; set; }
         public DateTime? ValidTill { get; set; }
+
+        public long GetIdentifier()
+        {
+            return Id;
+        }
     }
 }

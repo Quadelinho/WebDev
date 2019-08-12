@@ -8,17 +8,17 @@ using RestApiTest.Infrastructure.Data;
 
 namespace RestApiTest.Infrastructure.Repositories
 {
-    public class ForumUserRepository : IForumUserRepository
+    public class ForumUserRepository : BaseRepository<ForumUser>, IForumUserRepository
     {
-        private ForumContext context;
+        private ForumContext localContext;
 
-        public ForumUserRepository(ForumContext context)
+        public ForumUserRepository(ForumContext context):base(context)
         {
-            this.context = context;
+            this.context = localContext = context;
         }
 
         //TODO: implementacja pozostałych repozytoriów i kontrolerów
-        public Task<ForumUser> AddAsync(ForumUser objectToAdd, Action additionalSteps = null)
+        public override async Task<ForumUser> AddAsync(ForumUser objectToAdd, Action additionalPreSteps = null)
         {
             objectToAdd.SetInitialValues();//SetUserRegistrationDate();
 
@@ -32,7 +32,7 @@ namespace RestApiTest.Infrastructure.Repositories
 
         public async Task ConfirmUserAccountAsync(long id)
         {
-            ForumUser user = await context.Users.FindAsync(id);
+            ForumUser user = await localContext.Users.FindAsync(id);
             if(user != null)
             {
                 user.Confirm();
@@ -41,11 +41,6 @@ namespace RestApiTest.Infrastructure.Repositories
         }
 
         public Task<ForumUser> ConfirmUserAccountAsync()
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public Task DeleteAsync(long id)
         {
             throw new System.NotImplementedException();
         }
@@ -60,14 +55,14 @@ namespace RestApiTest.Infrastructure.Repositories
             throw new System.NotImplementedException();
         }
 
-        public Task<ForumUser> UpdateAsync(ForumUser objectToUpdate)
+        public override async Task<ForumUser> UpdateAsync(ForumUser objectToUpdate, Action additionalPreSteps = null)
         {
             throw new System.NotImplementedException();
         }
 
         public async Task UpdateLastLoginDate(long id)
         {
-            ForumUser user = await context.Users.FindAsync(id);
+            ForumUser user = await localContext.Users.FindAsync(id);
             if (user != null)
             {
                 user.LastLoggedIn = DateTime.UtcNow;

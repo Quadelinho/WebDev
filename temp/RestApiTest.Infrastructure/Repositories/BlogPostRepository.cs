@@ -15,58 +15,29 @@ namespace RestApiTest.Infrastructure.Repositories
     public class BlogPostRepository : BaseRepository<BlogPost>, IBlogPostRepository
     {
         //temp \/
-        private ForumContext context;
+        private ForumContext localContext;
         
         public BlogPostRepository(ForumContext context) : base(context)
         {
             //temp \/
-            this.context = context;
+            this.context = localContext = context;
         }
 
-        public override async Task<BlogPost> AddAsync(BlogPost objectToAdd, Action additionalSteps = null) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
+        public override async Task<BlogPost> AddAsync(BlogPost objectToAdd, Action additionalPreSteps = null) //[Note] - nie, bo to w założeniach nie są na tyle długotrwałe operacje - czy w praktyce w tego typu operacjach stosuje się cancellation token'y, czy raczej tylko w przypadku jakichś bardzo dużych obiektów  (np. z całego formularza)
         {
             return await base.AddAsync(objectToAdd, () => 
             {
-                bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
-                if (isTitleDuplicate)
-                {
-                    throw new BlogPostsDomainException("Update failed - the post with given title already exists");
-                }
+                additionalPreSteps?.Invoke();
+                ThrowOnTitleDuplication(objectToAdd.Title, objectToAdd.Id);
                 objectToAdd.UpdateModifiedDate();
             });
-            //if (objectToAdd == null)
-            //{
-            //    throw new ArgumentNullException("Failed to insert the post - empty entry, blogPost"); //[Note] - skoro to metoda publiczna, to lepiej robić walidację danych wejściowych też na tym etapie, nawet jeśli miałyby być zwielokrotnione te walidacje - czy takie podejście się stosuje, czy raczej się zwraca po prostu "pusty resultat"?
-            //                                                                                          //A może za kontrolę danych wejściowych powinien już odpowiadać kotroler, zanim zaangażuje wewnętrzne klasy?
-            //}
-
-            //bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == objectToAdd.Title) != null;
-            //if (isTitleDuplicate)
-            //{
-            //    throw new BlogPostsDomainException("Update failed - the post with given title already exists");
-            //}
-
-            //objectToAdd.UpdateModifiedDate();
-            //await context.Posts.AddAsync(objectToAdd); //[Note] - w rest trzeba zwracać error code + explanation; zależnie czy jest zdefiniowane wymaganie od klienta, jeśli nie - można dla global handlera - Czy w web'ówce stosuje się w tym punkcie kontrolę czy wpis już istnieje, czy to po prostu powinien złapać global handler?
-            //await context.SaveChangesAsync();
-            //return objectToAdd;
-        }
-
-        public override async Task DeleteAsync(long id)
-        {
-            BlogPost postToRemove = await context.Posts.FindAsync(id);
-            if (postToRemove != null)
-            {
-                context.Posts.Remove(postToRemove);
-                await context.SaveChangesAsync();
-            }
         }
 
         //[Note] - tak, IAsyncEnumerable ma wewnątrz taski i yeld'a, więc samo użycie tego typu już oznacza async'a - Czy jeśli chcę używać IAsyncEnumerable, które ma taski wewnątrz, to znaczy, że samej metody już nie mogę oznaczyć jako async
         public IQueryable<BlogPost> /*Task<*//*IEnumerable*//*IQueryable<BlogPost>*/ GetAllBlogPostsAsync() //=> (IEnumerable<BlogPost>)context.Posts?.ToAsyncEnumerable();
         {
             //return /*await*/ context.Posts;//.ToList();
-            return /*await*/ context.Posts.Include(p => p.Author)
+            return /*await*/ localContext.Posts.Include(p => p.Author)
                 .Include(p => p.Comments)
                 .Include(p => p.Votes)
                 .Select(p => p);
@@ -76,38 +47,26 @@ namespace RestApiTest.Infrastructure.Repositories
         public override async Task<BlogPost> GetAsync(long id)
         {
             //return await context.Posts.Include(p => p.Author).FindAsync(id);
-            return await context.Posts.Where(p => p.Id == id)
+            return await localContext.Posts.Where(p => p.Id == id)
                 .Include(p => p.Author)
                 .Include(p => p.Comments)
                 .Include(p => p.Votes)
                 .FirstOrDefaultAsync();
         }
 
-        public override async Task<BlogPost> UpdateAsync(BlogPost objectToUpdate)
+        public override async Task<BlogPost> UpdateAsync(BlogPost objectToUpdate, Action additionalPreSteps = null)
         {
-            if (objectToUpdate == null)
+            return await base.UpdateAsync(objectToUpdate, () => 
             {
-                throw new InvalidOperationException("Update failed - empty source object");
-            }
-            ThrowOnTitleDuplication(objectToUpdate.Title, objectToUpdate.Id);
-
-            BlogPost post = await context.Posts.FindAsync(objectToUpdate.Id);
-            if (post != null)
-            {
+                additionalPreSteps?.Invoke();
+                ThrowOnTitleDuplication(objectToUpdate.Title, objectToUpdate.Id);
                 objectToUpdate.UpdateModifiedDate();
-                context.Entry(post).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
-                await context.SaveChangesAsync(); //?? Było polecane użycie update, żeby nie zmieniać całego kontekstu, ale nie ma update'u asynchronicznego
-                return post;//[Note] - jeśli było by ryzyko, że będzie jednoczesna aktualizacja na bazie, to powinno się odczytywać zawsze z bazy - Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności (powinno raczej wystarczyć zwrócenie tego obiektu, bo context powinien być spójny z bazą)?
-            }
-            else
-            {
-                throw new BlogPostsDomainException("Update failed - no post to update");
-            }
+            });
         }
 
         private void ThrowOnTitleDuplication(string titleToCheck, long sourcePostId)
         {
-            bool isTitleDuplicate = context.Posts.FirstOrDefault(p => p.Title == titleToCheck && p.Id != sourcePostId) != null; //[Note] - at this point First, but it can be changed in future implementations of the framework - Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
+            bool isTitleDuplicate = localContext.Posts.FirstOrDefault(p => p.Title == titleToCheck && p.Id != sourcePostId) != null; //[Note] - at this point First, but it can be changed in future implementations of the framework - Czy FirstOrDefault jest wydajniejsze niż where? Która opcja będzie pchała najmniej zbędnych danych?
             if (isTitleDuplicate)
             {
                 throw new BlogPostsDomainException("Update failed - the post with given title already exists");
@@ -116,7 +75,7 @@ namespace RestApiTest.Infrastructure.Repositories
 
         public long GetAllMarksOfGivenType(bool refersToPositive, long relatedItemId)
         {
-            return (long)context.Votes.Count(v => v.VotedPost.Id == relatedItemId && v.IsLike == refersToPositive);
+            return (long)localContext.Votes.Count(v => v.VotedPost.Id == relatedItemId && v.IsLike == refersToPositive);
         }
 
         public async Task AddMarkAsync(Vote voteToAdd)
@@ -126,10 +85,10 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new BlogPostsDomainException("Adding mark failed - empty object");
             }
 
-            Vote alreadyExistingVoteEntry = context.Votes.Where(v => v.Voter.Id == voteToAdd.Voter.Id && v.VotedPost.Id == voteToAdd.VotedPost.Id) as Vote;
+            Vote alreadyExistingVoteEntry = localContext.Votes.Where(v => v.Voter.Id == voteToAdd.Voter.Id && v.VotedPost.Id == voteToAdd.VotedPost.Id) as Vote;
             if (alreadyExistingVoteEntry == null)
             {
-                await context.Votes.AddAsync(voteToAdd);
+                await localContext.Votes.AddAsync(voteToAdd);
                 await context.SaveChangesAsync();
             }
             else if (alreadyExistingVoteEntry.IsLike != voteToAdd.IsLike) //Given user has already voted but with opposite value -> update
@@ -141,7 +100,7 @@ namespace RestApiTest.Infrastructure.Repositories
 
         public async Task RemoveMarkAsync(long id)
         {
-            Vote voteToRemove = await context.Votes.FindAsync(id);
+            Vote voteToRemove = await localContext.Votes.FindAsync(id);
             if (voteToRemove != null)
             {
                 IVotable relatedObject = null;
@@ -185,11 +144,11 @@ namespace RestApiTest.Infrastructure.Repositories
             IQueryable<BlogPost> temp = null;
             if(String.IsNullOrWhiteSpace(textToSearch))
             {
-                temp = context.Posts; //[Note] - można uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania - lazy loading, gdzie typy referncyjne w modelu muszą być zdefiniowane jako virtual)
+                temp = localContext.Posts; //[Note] - można uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania - lazy loading, gdzie typy referncyjne w modelu muszą być zdefiniowane jako virtual)
             }
             else
             {
-                temp = context.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
+                temp = localContext.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
             }
             return temp
                 .Include(p => p.Author)
@@ -199,19 +158,19 @@ namespace RestApiTest.Infrastructure.Repositories
 
         public decimal GetTotalPostsCount()
         {
-            return context.Posts.Count();
+            return localContext.Posts.Count();
         }
 
         //public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
         public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
         {
             IQueryable<BlogPost> postsChunk = Enumerable.Empty<BlogPost>().AsQueryable();//null;
-            long totalPostsCount = context.Posts.Count();
+            long totalPostsCount = localContext.Posts.Count();
             if(totalPostsCount > 0)
             {
                 int numberOfPostsToTake = postsPerPage > 0 ? postsPerPage : 1;
                 int count = pageNo * numberOfPostsToTake;
-                postsChunk = context.Posts.Include(p => p.Author)
+                postsChunk = localContext.Posts.Include(p => p.Author)
                     .Include(p => p.Comments)
                     .Include(p => p.Votes)
                     .Skip(count).Take(numberOfPostsToTake);

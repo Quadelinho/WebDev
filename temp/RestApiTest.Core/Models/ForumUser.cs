@@ -1,10 +1,11 @@
-﻿using System;
+﻿using RestApiTest.Core.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace RestApiTest.Core.Models
 {
-    public class ForumUser
+    public class ForumUser : IIdentifiable
     {
         [Required]
         public long Id { get; set; }
@@ -46,6 +47,11 @@ namespace RestApiTest.Core.Models
         public void Confirm()
         {
             IsConfirmed = true;
+        }
+
+        public long GetIdentifier()
+        {
+            return Id;
         }
 
         public void SetInitialValues()

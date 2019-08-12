@@ -188,6 +188,7 @@ namespace RestApiTest.Controllers
             BlogPost addedPost = await repository.AddAsync(mappingProvider.Map<BlogPostDTO, BlogPost>(postToAdd));
             var addedPostDTO = mappingProvider.Map<BlogPostDTO>(addedPost); //[Note] - w tego typu aplikacjach narzut wynikający z mapowania jest powszechnym i akceptowanym minusem, bo mapowanie jest konieczne - Czy to podwójne mapowanie nie jest już za dużym narzutem na taką akcję?
             return CreatedAtRoute("GetBlog", new { id = addedPost.Id }, addedPostDTO); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
+            //?? Czy ten middleware CreatedAtRoute nie powienien zwracać też URL'a do nowego obiektu? Postman pokazuje tam tylko w JSON'ie body tego obiektu.s
         }
 
         [HttpPatch("{id}")]

@@ -1,17 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RestApiTest.Core.DTO;
 using RestApiTest.Core.Exceptions;
+using RestApiTest.Core.Interfaces;
 using RestApiTest.Core.Interfaces.Repositories;
-using RestApiTest.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
 {
-    public class BaseRepository<T> : IBaseRepository<T> where T : class
+    public class BaseRepository<T> : IBaseRepository<T> where T : class, IIdentifiable
     {
         //protected ForumContext context;
         protected DbContext context;
@@ -28,8 +26,7 @@ namespace RestApiTest.Infrastructure.Repositories
             }
 
             //[Note] - tak, nic nie stoi na przeszkodzie i korzysta się z tego w praktyce - Czy stosuje się w praktyce przekazywanie do generycznego bazowego repo akcji / delegatów pozwalających definiować np. dodatkowe przypisania warotści poza tym co jest w metodzie bazowej?
-            //objectToAdd.SetInitialValues();
-            additionalSteps();
+            additionalSteps?.Invoke();
             //TODO: Używać DbContext i z niego brać context.Set<T> - samo weźmie odpowiednią kolekcję
             await context.Set<T>().AddAsync(objectToAdd);
             await context.SaveChangesAsync();
@@ -41,9 +38,15 @@ namespace RestApiTest.Infrastructure.Repositories
             throw new NotImplementedException();
         }
 
-        public virtual Task DeleteAsync(long id)
+        public virtual async Task DeleteAsync(long id, Action additionalPreSteps = null)
         {
-            throw new NotImplementedException();
+            var objectToRemove = await context.Set<T>().FindAsync(id);
+            if (objectToRemove != null)
+            {
+                additionalPreSteps?.Invoke();
+                context.Set<T>().Remove(objectToRemove);
+                await context.SaveChangesAsync();
+            }
         }
 
         public virtual Task<T> GetAsync(long id)
@@ -51,9 +54,27 @@ namespace RestApiTest.Infrastructure.Repositories
             throw new NotImplementedException();
         }
 
-        public virtual Task<T> UpdateAsync(T objectToUpdate)
+        public virtual async Task<T> UpdateAsync(T objectToUpdate, Action additionalPreSteps = null)
         {
-            throw new NotImplementedException();
+            if (objectToUpdate == null)
+            {
+                throw new InvalidOperationException("Update failed - empty source object");
+            }
+
+            additionalPreSteps?.Invoke();
+            
+            T entityToModify = await context.Set<T>().FindAsync(objectToUpdate.GetIdentifier()); //?? Czy tu jest jakiś sprytny sposób, żeby z typu generycznego wyłuskać propery klucza do find'a?
+                                                                                          //Czy tylko refleksja, lub klasa bazowa / interfejs?
+            if (entityToModify != null)
+            {
+                context.Entry<T>(entityToModify).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)
+                await context.SaveChangesAsync(); //?? Było polecane użycie update, żeby nie zmieniać całego kontekstu, ale nie ma update'u asynchronicznego
+                return entityToModify;//[Note] - jeśli było by ryzyko, że będzie jednoczesna aktualizacja na bazie, to powinno się odczytywać zawsze z bazy - Czy wystarczy, że zwrócę obiekt post, czy muszę go ponownie odczytywać z bazy, żeby wykluczyć jakiekolwiek niespójności (powinno raczej wystarczyć zwrócenie tego obiektu, bo context powinien być spójny z bazą)?
+            }
+            else
+            {
+                throw new BlogPostsDomainException("Update failed - no post to update");
+            }
         }
     }
 }

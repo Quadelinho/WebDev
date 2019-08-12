@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace RestApiTest.Core.Models
 {
-    public class Comment : IVotable //?? czy podanie tutaj tego interfejsu nie wykracza już poza założenia modelu
+    public class Comment : IVotable, IIdentifiable //?? czy podanie tutaj tego interfejsu nie wykracza już poza założenia modelu
     {
         [Required]
         public long Id { get; set; }
@@ -87,6 +87,11 @@ namespace RestApiTest.Core.Models
             IsRecommendedSolution = false;
             SentDate = Modified = DateTime.UtcNow;
             Points = 0;
+        }
+
+        public long GetIdentifier()
+        {
+            return Id;
         }
 
         //?? Jak jest ogarnięte po stronie framework'a to rozróżnienie IQueryable i IEnumerable? czy wystarczy rzeczywiśćie tylko zmienić typ interfejsu, żeby ta sama zmienna odwołująca się do kolekcji z bazy była przez EF przetwarzana zupełnie inaczej?
