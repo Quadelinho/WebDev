@@ -27,7 +27,6 @@ namespace RestApiTest.Infrastructure.Repositories
 
             //[Note] - tak, nic nie stoi na przeszkodzie i korzysta się z tego w praktyce - Czy stosuje się w praktyce przekazywanie do generycznego bazowego repo akcji / delegatów pozwalających definiować np. dodatkowe przypisania warotści poza tym co jest w metodzie bazowej?
             additionalSteps?.Invoke();
-            //TODO: Używać DbContext i z niego brać context.Set<T> - samo weźmie odpowiednią kolekcję
             await context.Set<T>().AddAsync(objectToAdd);
             await context.SaveChangesAsync();
             return objectToAdd;

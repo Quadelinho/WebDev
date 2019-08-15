@@ -4,4 +4,13 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.AspNetCore" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RestApiTest.Core\RestApiTest.Core.csproj" />
+    <ProjectReference Include="..\RestApiTest.Infrastructure\RestApiTest.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

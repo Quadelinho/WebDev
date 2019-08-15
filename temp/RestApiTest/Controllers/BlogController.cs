@@ -20,10 +20,12 @@ namespace RestApiTest.Controllers
     [ApiController]
     public class BlogController : ControllerBase
     {
+        private const int defaultPostsPerPage = 10; //This can't be readonly, because variables used as default parameters have to be constants known at compilation time
         private IBlogPostRepository repository;
         private ILogger<BlogController> logger;
         private IMapper mappingProvider;
-        private IConfiguration configuration; 
+        private IConfiguration configuration;
+        private readonly int maxPostsPerPage;
 
         public BlogController(ILogger<BlogController> log, IBlogPostRepository repository, IHostingEnvironment environment, IMapper mapper, IConfiguration configuration)
         {
@@ -32,6 +34,7 @@ namespace RestApiTest.Controllers
             this.repository = repository;
             mappingProvider = mapper;
             this.configuration = configuration;
+            maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //[Note - można dynamicznie - parametr w starup, przy definiowaniu plików ustawień - jeśli true, będzie zaczytywany dynamicznie, nawet jeśli zostanie zmieniony w locie (ryzyko - może doprowadzić do problemów z indempotencją - jeśli ktoś podmieni plik w trakcie, to samo zapytanie może dać różne wyniki. Dodatkowo potem mogą być fałszywe wpisy w logach (np. jeśli ktoś zmieni na wartość generującą błąd, a potem przywróci wartość właściwą)] - Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
             //var posts = repository.GetAllBlogPostsAsync();
             //if (posts == null || posts.Count() == 0)
             //{
@@ -84,7 +87,7 @@ namespace RestApiTest.Controllers
         }
 
         //Done: Szukanie po tytułach (adres endpointa: /posts/?title contains) 
-        //TODO: Done pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
+        //Done: pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
@@ -105,69 +108,36 @@ namespace RestApiTest.Controllers
                 return NoContent();
             }
         }
-
-        //[HttpGet("pages/{pageNo}")]
-        [HttpGet("pages", Name = "pagedPosts")]
-        [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //public async Task<ActionResult<IEnumerable</*BlogPostDTO*/PageDTO<BlogPostDTO>>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
-        public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetNextChunk([FromQuery]int pageNo, int postsPerPage)
-        {
-            int maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //[Note - można dynamicznie - parametr w starup, przy definiowaniu plików ustawień - jeśli true, będzie zaczytywany dynamicznie, nawet jeśli zostanie zmieniony w locie (ryzyko - może doprowadzić do problemów z indempotencją - jeśli ktoś podmieni plik w trakcie, to samo zapytanie może dać różne wyniki. Dodatkowo potem mogą być fałszywe wpisy w logach (np. jeśli ktoś zmieni na wartość generującą błąd, a potem przywróci wartość właściwą)] - Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
-            if(!Request.Query.ContainsKey("pageNo")
-                || (Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //Done: Górny limit postów odczytywać z config'a
-            {
-                logger.LogWarning("Posts paging bad request");
-                //[Note] - Fail fast -> lepiej od razu zwracać błąd niż robić jakieś akcje, które mogą być nieoczekiwane - Jakie podejście stosuje się w praktyce przy zbyt dużej liczbie podanej do zwrotu - bad request, czy nadpisać tą wartość maksymalną dopuszczalną i zwrócić (chyba to lepsze ze względu na płynność, ale może być niejasne dla użytkownika i być może ujawniać limity systemu potencjalnym atakującym?)
-                return BadRequest();
-            }
-
-            logger.LogInformation("Calling get for next chunk");
-            var posts = /*await*/ repository.GetBlogPostsChunkAsync(pageNo, postsPerPage);
-            long? count = posts?.Count();
-            if (count.HasValue && count.Value > 0)
-            { //Done - Przygotować do zwrotu obiekt PageDTO
-                decimal totalPages = Math.Ceiling(repository.GetTotalPostsCount() / postsPerPage);
-                
-                PageDTO<BlogPostDTO> valueToReturn = new PageDTO<BlogPostDTO>(mappingProvider.ProjectTo<BlogPostDTO>(posts).ToList(),
-                    (int)totalPages, 
-                    Url.Link("pagedPosts", new { pageNo = ++pageNo, postsPerPage = postsPerPage  }));
-                    //alternatywnie można użyć z nullem zamiast nazwy, żeby brał bieżącą akcję -> Url.Link(null, new { pageNo = ++pageNo, postsPerPage = postsPerPage  }));
-
-                return Ok(valueToReturn); //[Note] - np. zwracając post'a przekazywać zwrotkę z URL'em do coment'ów - Gdzie jeszcze powinny być zwracane url'e, żeby była pełna zgodność z HATEOAS'em? //TODO: zwracać URL'a do komentarzy
-            }
-            else
-            {
-                logger.LogWarning("No posts to return");
-                return NoContent();
-            }
-        }
-
-        //TODO: paging dla wyników wyszukiwania po tytule
-        //TODO: Done [Note] - nic nie trzeba osobno dodawać w opcjach Startupu, tylko MUSI być '/' między ścieżką endpoint'a, a parametrem, a sam pytajnik musi być po prawej stronie od nazwy parametru - Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
+        
+        //TODO: Done: paging dla wyników wyszukiwania po tytule
+        //Done: [Note] - nic nie trzeba osobno dodawać w opcjach Startupu, tylko MUSI być '/' między ścieżką endpoint'a, a parametrem, a sam pytajnik musi być po prawej stronie od nazwy parametru - Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
         //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
-        //[HttpGet("find/{titlePartToFind}")]
-        [HttpGet("find/{titlePartToFind?}")]
+        //[HttpGet("find/{titlePartToFind?}/{pageNo?}/{postsPerPage?}")] //[Note] - parametry tak podane są opcjonalne, mogą być podawane w URL'u request'a w dowolnej kolejności i może ich nie być
+        [HttpGet("posts/{titlePartToFind?}/{pageNo?}/{postsPerPage?}")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetByTitle([FromQuery]string titlePartToFind) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
+        public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetPosts([FromQuery]string titlePartToFind = "", [FromQuery] int pageNo = 0, [FromQuery] int postsPerPage = defaultPostsPerPage) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
         { //[Note] - w praktyce osoba pisząca API backend'owe nie powinna się tym przejmować, bo to leży w kwestii używającego API, żeby przekazać właściwie zakodowane znaki. Najlepiej do tesów używać Postmana, bo on to powinien zakodować prawidłowo (przeglądarki nie przesyłają jawnie podanych znaków '#', bo są one używane do określenia ostatnio odwiedzanej pozycji paska przewijania - Czy można jakoś wymusić, żeby znaki specjalne były odpowiednio parsowane? Jak wpiszę w przeglądarce ?... entry # to nie koduje i nie przesyła tego #, dopiero go przekazuje jak sam podam entry%20%23 (chociaż spacje koduje prawidłowo od razu)?
-
-            //if(string.IsNullOrWhiteSpace(Request[""].QueryString("titlePartToFind")))
-            if(!Request.Query.ContainsKey("titlePartToFind")) //[Note] - można w parametrze robić binding do obiektu: np. GetByTitle([FromQuery]ModelObject paramName) i potem sprawdzać if(ModelState.IsValid) -> to sprawdzi, czy parametr podany w query da radę być zmapowany na właściwość obiektu
+            if (/*!Request.Query.ContainsKey("titlePartToFind") //?? Czy tutaj nie powinno się robić walidacji, czy jest w QueryString chociaż jeden parametr wymagany?
+                || */(Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //[Note] - można w parametrze robić binding do obiektu: np. GetByTitle([FromQuery]ModelObject paramName) i potem sprawdzać if(ModelState.IsValid) -> to sprawdzi, czy parametr podany w query da radę być zmapowany na właściwość obiektu
             {
                 logger.LogWarning("The find request contained invalid parameter");
+                //[Note] - Fail fast -> lepiej od razu zwracać błąd niż robić jakieś akcje, które mogą być nieoczekiwane - Jakie podejście stosuje się w praktyce przy zbyt dużej liczbie podanej do zwrotu - bad request, czy nadpisać tą wartość maksymalną dopuszczalną i zwrócić (chyba to lepsze ze względu na płynność, ale może być niejasne dla użytkownika i być może ujawniać limity systemu potencjalnym atakującym?)
                 return BadRequest(new { errorCode = 2, errorMessage = "testc"}); //[Note] - Tak, najlepiej zwracać jakiś obiekt / model z informacją co było źle, żeby użytkownik API był ewentualnie w stanie poprawić request'a - Czy w BadRequest zwraca się coś informacyjnego (np. treść/url requestu)?
             }
 
             logger.LogDebug("Calling get for all posts containing in title: {0}", titlePartToFind); //[Note] - Done - takie rzeczy tylko jako debug
-            var posts = /*await*/ repository.GetPostsContaingInTitle(titlePartToFind);
+            decimal totalPages;
+            var posts = /*await*/ repository.GetPostsContaingInTitle(titlePartToFind, pageNo, postsPerPage, out totalPages);
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts));
+                PageDTO<BlogPostDTO> valueToReturn = new PageDTO<BlogPostDTO>(mappingProvider.ProjectTo<BlogPostDTO>(posts).ToList(),
+                    (int)totalPages,
+                    Url.Link("pagedPosts", new { pageNo = ++pageNo, postsPerPage = postsPerPage }));
+
+                return Ok(valueToReturn); //[Note] - np. zwracając post'a przekazywać zwrotkę z URL'em do coment'ów - Gdzie jeszcze powinny być zwracane url'e, żeby była pełna zgodność z HATEOAS'em? //TODO: zwracać URL'a do komentarzy
             }
             else
             {

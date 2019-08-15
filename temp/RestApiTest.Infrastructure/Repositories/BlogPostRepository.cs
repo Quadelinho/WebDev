@@ -28,7 +28,7 @@ namespace RestApiTest.Infrastructure.Repositories
             return await base.AddAsync(objectToAdd, () => 
             {
                 additionalPreSteps?.Invoke();
-                ThrowOnTitleDuplication(objectToAdd.Title, objectToAdd.Id);
+                ThrowOnTitleDuplication(objectToAdd.Title, objectToAdd.Id); //?? Które reguły walidacyjne mają być w Validator'ze? Czy walidacja duplikacji tytułu ma być tu, czy przeniesiona do validator'a?
                 objectToAdd.UpdateModifiedDate();
             });
         }
@@ -139,43 +139,47 @@ namespace RestApiTest.Infrastructure.Repositories
             return entityEntry.Entity;
         }
 
-        public IQueryable<BlogPost> GetPostsContaingInTitle(string textToSearch)
+        public IQueryable<BlogPost> GetPostsContaingInTitle(string textToSearch, int pageNo, int postsPerPage, out decimal totalPagesCount)
         {
-            IQueryable<BlogPost> temp = null;
+            IQueryable<BlogPost> foundPosts = null;
             if(String.IsNullOrWhiteSpace(textToSearch))
             {
-                temp = localContext.Posts; //[Note] - można uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania - lazy loading, gdzie typy referncyjne w modelu muszą być zdefiniowane jako virtual)
+                foundPosts = localContext.Posts; //[Note] - można uprościć wszystkie wywołania include dla zależności EF (sprawdzić podejście z drugim rodzajem ładowania - lazy loading, gdzie typy referncyjne w modelu muszą być zdefiniowane jako virtual)
             }
             else
             {
-                temp = localContext.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
+                foundPosts = localContext.Posts.Where(p => p.Title.Contains(textToSearch, StringComparison.InvariantCultureIgnoreCase));
             }
-            return temp
-                .Include(p => p.Author)
-                .Include(p => p.Comments)
-                .Include(p => p.Votes);
+            return GetPostsChunk(foundPosts, pageNo, postsPerPage, out totalPagesCount);
         }
-
-        public decimal GetTotalPostsCount()
+        
+        public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage, out decimal totalPagesCount)
         {
-            return localContext.Posts.Count();
+            return GetPostsChunk(localContext.Posts, pageNo, postsPerPage, out totalPagesCount);
         }
-
-        //public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
-        public /*async*/ IQueryable<BlogPost> GetBlogPostsChunkAsync(int pageNo, int postsPerPage)
+        
+        private IQueryable<BlogPost> GetPostsChunk(IQueryable<BlogPost> postsCollection, int pageNo, int postsPerPage, out decimal totalPages)
         {
-            IQueryable<BlogPost> postsChunk = Enumerable.Empty<BlogPost>().AsQueryable();//null;
-            long totalPostsCount = localContext.Posts.Count();
-            if(totalPostsCount > 0)
+            IQueryable<BlogPost> chunkToReturn = Enumerable.Empty<BlogPost>().AsQueryable();
+            int? postsToSkip = null;
+            decimal totalPostsInCollection = postsCollection != null ? postsCollection.Count() : 0;
+            if (totalPostsInCollection > 0)
             {
+                totalPages = Math.Ceiling(totalPostsInCollection / postsPerPage);
                 int numberOfPostsToTake = postsPerPage > 0 ? postsPerPage : 1;
-                int count = pageNo * numberOfPostsToTake;
-                postsChunk = localContext.Posts.Include(p => p.Author)
+                postsToSkip = pageNo * numberOfPostsToTake;
+                chunkToReturn = postsCollection
+                    .Skip(postsToSkip.Value)
+                    .Take(numberOfPostsToTake)
+                    .Include(p => p.Author)
                     .Include(p => p.Comments)
-                    .Include(p => p.Votes)
-                    .Skip(count).Take(numberOfPostsToTake);
+                    .Include(p => p.Votes);
             }
-            return postsChunk;
+            else
+            {
+                totalPages = 0;
+            }
+            return chunkToReturn;
         }
     }
 }
