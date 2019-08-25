@@ -43,7 +43,7 @@ namespace RestApiTest
                 //Każdy pakiet dodaje swoje extensiony do namespace'a frameworkowego (np. System.Collections) i wtedy każda klasa, która w using'u poda ten pakiet widzi wszystkie to rozszerzenia
             services.AddSingleton<IConfiguration>(Configuration);
             services.AddTransient<IBlogPostRepository, BlogPostRepository>();  //[Note] - może przez dziedziczenie po wspólnych interface'ach, bo normalnie powinno to działać bez jawnej deklaracji - Dlaczego muszę wszystkie te repozytoria rejestrować jawnie dla DI?
-            services.AddTransient<ICommentRepository, CommentRepository>();
+            services.AddTransient<ICommentRepository, CommentRepository>(); //[Note] - nie jest konieczne, z transient też działa po usunięciu tych async'ów z db initialize - spradzić, czy użycie scoped nie pomoże na tą inicjalizację
             services.AddTransient<IForumUserRepository, ForumUserRepository>();
             services.AddTransient<IDbInitializer, DatabaseInitializer>();
             ConfigureAutoMapper();
@@ -79,15 +79,26 @@ namespace RestApiTest
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            using (var serviceScope = app.ApplicationServices.CreateScope())
+            {
+                var context = serviceScope.ServiceProvider.GetService<ForumContext>();
+                context.Database.Migrate(); //[Note] Powoduje wywołanie zestawu migracji tak jak komenda Database-Update i zapewnia, że jeśli na danym środowisku nie ma bazy, to zostanie ona utworzona zgodnie ze schematem i modelem
+            }
+
             if (env.IsDevelopment())
             {
                 //app.UseDeveloperExceptionPage();
                 app.UseExceptionHandler("/api/Error");
                 LoggerFactory loggerFactory = new LoggerFactory();
-                IDbInitializer dbInitializer = new DatabaseInitializer(loggerFactory.CreateLogger<DatabaseInitializer>()/*app.ApplicationServices.GetService<ILogger<DatabaseInitializer>*/); //?? Jak mogę przekazać logger'a określonego typu do inicjalizatora przez DI?
-                //dbInitializer.PrepareSampleData(app.ApplicationServices.GetRequiredService<ForumContext>(), false); //TODO: do Program.cs (żeby było tworzoene na etapie run, a nie strzału service'u) lub po useMVC
-                //?? Jak przekazać ten context do inicjalizacji bazy? Dostaję cały czas błąd, że nie udaje się znaleźć właściwego powiązania
-                //var t = app.ApplicationServices.CreateScope().ServiceProvider.GetRequiredService<ForumContext>();
+                using (var serviceScope = app.ApplicationServices.CreateScope())
+                {
+                    //[Note] - jeśli są problemy z już użytym contextem, można w connection stringu podać flagę dopuszczającą wiele połączeń: MultipleActiveResultSets=true
+                    var context = serviceScope.ServiceProvider.GetService<ForumContext>();
+                    //context.Database.EnsureCreated(); //[Note] jeśli baza zostanie stworzona przez EnsureCreated - nie używane są do tego migracje i nie da się już na takiej bazie użyć migracji. EnsureCreated jest zazwyczaj używane tylko jeśli potrzeba jakiejś szybko tworzonej bazy na potrzeby testów
+                    IDbInitializer dbInitializer = new DatabaseInitializer(loggerFactory.CreateLogger<DatabaseInitializer>()/*app.ApplicationServices.GetService<ILogger<DatabaseInitializer>*/);
+                    dbInitializer.PrepareSampleData(serviceScope.ServiceProvider.GetService<ForumContext>(), true);
+                }
+                //[Note] - Przyczyną dispose'a było to, że w DatabaseInitializer'ze metody były asynchroniczne, więc były tworzone w osobnym wątku, a jako, że Configure tutaj nie była oznaczona jako async, nie mogła używać await, więc usuwała context zanim wątek skończył w nim operacje - Są problemy z zapisem do bazy - DataReader już w użyciu, a jeśli użyję MultipleActiveResultSets=true w connection string'u to obiekt jest dispose'owany przez coś innego
             }
             else
             {

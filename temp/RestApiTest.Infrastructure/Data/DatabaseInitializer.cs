@@ -1,11 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
-using RestApiTest.Infrastructure.Repositories;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace RestApiTest.Infrastructure.Data
 {
@@ -14,20 +11,13 @@ namespace RestApiTest.Infrastructure.Data
         IBlogPostRepository blogsRepository;
         IForumUserRepository usersRepository;
         ILogger<DatabaseInitializer> logger;
-        //ForumContext context;
-
-        //public DatabaseInitializer(/*IBlogPostRepository repository, IForumUserRepository usersRepository*/)
-        //{
-        //    this.blogsRepository = repository;
-        //    this.usersRepository = usersRepository;
-        //}
-
+        
         public DatabaseInitializer(ILogger<DatabaseInitializer> logger)
         {
             this.logger = logger;
         }
 
-        public async void PrepareSampleData(ForumContext context, bool skipIfDbNotEmpty)
+        public void PrepareSampleData(ForumContext context, bool skipIfDbNotEmpty)
         { //[Note] - trzeba to dobrze zarejestrować w startup'ie - patrz NIP - Jak zapewnić tutaj możliwość użycia interfejsów repo zamiast rzeczywistych typów, żeby zapewnić łatwe testowanie? Użycie tego automatycznego dependency injection tak jak w controllerach mi nie zadziałało
             
             if(context == null)
@@ -40,10 +30,10 @@ namespace RestApiTest.Infrastructure.Data
             if(userEntry == null || !skipIfDbNotEmpty)
             {
                 List<ForumUser> usersToAdd = CreateSampleUsers();
-                await context.Users.AddRangeAsync(usersToAdd);
-                //await context.SaveChangesAsync();
-                await context.Posts.AddRangeAsync(CreateSamplePosts(usersToAdd[0]));
-                await context.SaveChangesAsync();
+                context.Users.AddRange(usersToAdd);
+                context.SaveChanges();
+                context.Posts.AddRange(CreateSamplePosts(usersToAdd[0]));
+                context.SaveChanges();
             }
         }
 
@@ -83,7 +73,7 @@ namespace RestApiTest.Infrastructure.Data
     }
 }
 
-//?? Jak dokładnie działa ta inicjalizacja bazy użyta w przykładzie NIP, bo ten zapis jest dla mnie nie całkiem jasny? 
+//[To initializeDatabase jest extension'em, dlatego jest wywoływana bezpośrednio z obiektu IWebHost] Jak dokładnie działa ta inicjalizacja bazy użyta w przykładzie NIP, bo ten zapis jest dla mnie nie całkiem jasny? 
 //- jak tam następuje odwołanie do tej klasy ConfigureWebHostHelper, skoro nigdzie nie widać tam jej jawnego wywołania, tylko odwołanie do jej metody?
 // https://github.com/wi7a1ian/nip-lab-2018/blob/dev/add-v2-controller-tests/src/Nip.Blog/Services/Posts/Posts.API/Program.cs
-//?? W przykładzie NIP jest informacja, żeby hasła trzymać w managerze haseł secrets.json - czym jest ten plik i jak tam można bezpiczenie trzymać hasła (czy tam jest tylko ścieżka do jakiegoś zewnętrznego narzędzia?)
+//[Note] - Secrets.json jest plikiem w systemie przechowującym hasła. Tylko administrator danej organizacji może tam edytować dane połączeniowe. Dostęp do pliku z poziomu projektu może być przez kliknięcie PPM na projekcie (np. RestApiTest) i wybranie opcji 'Manage User Secrets' - -  W przykładzie NIP jest informacja, żeby hasła trzymać w managerze haseł secrets.json - czym jest ten plik i jak tam można bezpiczenie trzymać hasła (czy tam jest tylko ścieżka do jakiegoś zewnętrznego narzędzia?)
