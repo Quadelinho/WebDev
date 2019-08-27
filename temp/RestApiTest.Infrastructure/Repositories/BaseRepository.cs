@@ -5,6 +5,7 @@ using RestApiTest.Core.Interfaces;
 using RestApiTest.Core.Interfaces.Repositories;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace RestApiTest.Infrastructure.Repositories
@@ -53,6 +54,14 @@ namespace RestApiTest.Infrastructure.Repositories
             throw new NotImplementedException();
         }
 
+        protected virtual long GetKey<T>(T entity)
+        {
+            var keyName = context.Model.FindEntityType(typeof(T)).FindPrimaryKey().Properties
+                .Select(x => x.Name).Single();
+
+            return (long)entity.GetType().GetProperty(keyName).GetValue(entity, null);
+        }
+
         public virtual async Task<T> UpdateAsync(T objectToUpdate, Action additionalPreSteps = null)
         {
             if (objectToUpdate == null)
@@ -60,10 +69,12 @@ namespace RestApiTest.Infrastructure.Repositories
                 throw new InvalidOperationException("Update failed - empty source object");
             }
 
+            long id = GetKey<T>(objectToUpdate); //Przykład użycia refleksji do wydobycia klucza głównego w sposób generyczny
+
             additionalPreSteps?.Invoke();
-            
-            T entityToModify = await context.Set<T>().FindAsync(objectToUpdate.GetIdentifier()); //?? Czy tu jest jakiś sprytny sposób, żeby z typu generycznego wyłuskać propery klucza do find'a?
-                                                                                          //Czy tylko refleksja, lub klasa bazowa / interfejs?
+            //TODO: Done - [Note] - można przez refleksję dostać się do wszystkich typów kluczy, prywatnego, obcego i złożonych - sprawdzić czy nie istnieje sposób na pozyskanie informacji o primary key (źródło: https://stackoverflow.com/questions/30688909/how-to-get-primary-key-value-with-entity-framework-core)
+            T entityToModify = await context.Set<T>().FindAsync(objectToUpdate.GetIdentifier()); //[Note] - najczęściej używa się interfejsu lub dziedziczy po wspólnej klasie bazowej mającej publiczny akcesor, ale da się też refleksją - Czy tu jest jakiś sprytny sposób, żeby z typu generycznego wyłuskać propery klucza do find'a?
+                                                                                          //Czy tylko refleksja, lub klasa bazowa / interfejs? //[Note] - najczęściej stosuje się interfejs lub klasę bazową dla wszystkich repo. Ewentualnie można przekazywać jako parametr do tej metody predykat, który ma być użyty przez Linq do znalezienia właściwego obiektu
             if (entityToModify != null)
             {
                 context.Entry<T>(entityToModify).CurrentValues.SetValues(objectToUpdate); //[Note] !! - To nie ogarnia zagnieżdżonych typów referencyjnych, tylko proste. Jeśli properties'y są referencjami, trzeba je zaktualizować indywidualnie (https://stackoverflow.com/questions/13236116/entity-framework-problems-updating-related-objects)

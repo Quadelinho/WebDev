@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace RestApiTest.Controllers
 {
-    [Route("api/[controller]")] //[note] gdzie można podejrzeć dostępne tokeny, takie jak ten? - w dokumentacji na MSDN
+    [Route("api/posts")] //[note] gdzie można podejrzeć dostępne tokeny, takie jak ten? - w dokumentacji na MSDN
     [ApiController]
     public class BlogController : ControllerBase
     {
@@ -35,15 +35,6 @@ namespace RestApiTest.Controllers
             mappingProvider = mapper;
             this.configuration = configuration;
             maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //[Note - można dynamicznie - parametr w starup, przy definiowaniu plików ustawień - jeśli true, będzie zaczytywany dynamicznie, nawet jeśli zostanie zmieniony w locie (ryzyko - może doprowadzić do problemów z indempotencją - jeśli ktoś podmieni plik w trakcie, to samo zapytanie może dać różne wyniki. Dodatkowo potem mogą być fałszywe wpisy w logach (np. jeśli ktoś zmieni na wartość generującą błąd, a potem przywróci wartość właściwą)] - Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
-            //var posts = repository.GetAllBlogPostsAsync();
-            //if (posts == null || posts.Count() == 0)
-            //{
-            //    var sampleData = CreateSampleData(5);
-            //    foreach (var post in sampleData)
-            //    {
-            //        repository.AddAsync(post);
-            //    }
-            //}
         }
 
         //GET api/blog
@@ -109,17 +100,18 @@ namespace RestApiTest.Controllers
             }
         }
         
-        //TODO: Done: paging dla wyników wyszukiwania po tytule
+        //Done: paging dla wyników wyszukiwania po tytule
         //Done: [Note] - nic nie trzeba osobno dodawać w opcjach Startupu, tylko MUSI być '/' między ścieżką endpoint'a, a parametrem, a sam pytajnik musi być po prawej stronie od nazwy parametru - Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
         //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
         //[HttpGet("find/{titlePartToFind?}/{pageNo?}/{postsPerPage?}")] //[Note] - parametry tak podane są opcjonalne, mogą być podawane w URL'u request'a w dowolnej kolejności i może ich nie być
+        [HttpGet("{titlePartToFind?}")]
         [HttpGet("posts/{titlePartToFind?}/{pageNo?}/{postsPerPage?}")]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetPosts([FromQuery]string titlePartToFind = "", [FromQuery] int pageNo = 0, [FromQuery] int postsPerPage = defaultPostsPerPage) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
         { //[Note] - w praktyce osoba pisząca API backend'owe nie powinna się tym przejmować, bo to leży w kwestii używającego API, żeby przekazać właściwie zakodowane znaki. Najlepiej do tesów używać Postmana, bo on to powinien zakodować prawidłowo (przeglądarki nie przesyłają jawnie podanych znaków '#', bo są one używane do określenia ostatnio odwiedzanej pozycji paska przewijania - Czy można jakoś wymusić, żeby znaki specjalne były odpowiednio parsowane? Jak wpiszę w przeglądarce ?... entry # to nie koduje i nie przesyła tego #, dopiero go przekazuje jak sam podam entry%20%23 (chociaż spacje koduje prawidłowo od razu)?
-            if (/*!Request.Query.ContainsKey("titlePartToFind") //?? Czy tutaj nie powinno się robić walidacji, czy jest w QueryString chociaż jeden parametr wymagany?
+            if (/*!Request.Query.ContainsKey("titlePartToFind") //[Note] - można w validatorze, ale zależy od ustalenia z zespołem - Czy tutaj nie powinno się robić walidacji, czy jest w QueryString chociaż jeden parametr wymagany?
                 || */(Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //[Note] - można w parametrze robić binding do obiektu: np. GetByTitle([FromQuery]ModelObject paramName) i potem sprawdzać if(ModelState.IsValid) -> to sprawdzi, czy parametr podany w query da radę być zmapowany na właściwość obiektu
             {
                 logger.LogWarning("The find request contained invalid parameter");
@@ -151,14 +143,14 @@ namespace RestApiTest.Controllers
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status201Created)] //[Note] Co definiuje się w takich przypadkach jako typ zwracany? Muszę podawać zawsze typ rzeczywisty, bo interface nie może być obiektem typeof? ODP: tak, podaje się typ rzeczywisty
         public async Task<IActionResult> Post([FromBody] BlogPostDTO postToAdd) //[note] Czy tutaj to FromBody jest konieczne? Czy domyślnie typy złożone nie powinny być odczytywane z body? ODP: nie jest konieczne, bo domyślnie są odczytywane z body, ale poprawia czytelność
         {
-            //?? Czy w jakiś sposób mam tutaj przetwarzać typy referencyjne (np. jak z postmana chcę dodać post z autorem już istniejącym, to czy muszę zawsze podawać wszystkie pola, czy mogę podać id?)
+            //TODO: [Przekazać Id - sprawdzić foreign key EF]?? Czy w jakiś sposób mam tutaj przetwarzać typy referencyjne (np. jak z postmana chcę dodać post z autorem już istniejącym, to czy muszę zawsze podawać wszystkie pola, czy mogę podać id?)
                     //np. mam sprawdzać id autora w DTO i jeśli != 0 to próbować go znaleźć w kontekście i przypisać?
             logger.LogInformation("Calling post for the following object: {@0} ", postToAdd); //?? Czy przy tym nie ma tej automatycznej weryfikacji modelu? W body post'a miałem więcej pól i wszystko przeszło. Czy da się wymusić kontrolę 1:1 (żeby body było w 100% zgodne z modelem?
 //           postToAdd.Modified = DateTime.Now.ToLongDateString();
             BlogPost addedPost = await repository.AddAsync(mappingProvider.Map<BlogPostDTO, BlogPost>(postToAdd));
             var addedPostDTO = mappingProvider.Map<BlogPostDTO>(addedPost); //[Note] - w tego typu aplikacjach narzut wynikający z mapowania jest powszechnym i akceptowanym minusem, bo mapowanie jest konieczne - Czy to podwójne mapowanie nie jest już za dużym narzutem na taką akcję?
             return CreatedAtRoute("GetBlog", new { id = addedPost.Id }, addedPostDTO); //[note] W jaki sposób przerobić to na pojedynczy punkt wyjścia? Czy jest jakiś typ wspólny dla tych helpersów i czy tak się w ogóle robie w web dev'ie? ODP: nie stosuje się tego podejścia w aplikacjach web'owych
-            //?? Czy ten middleware CreatedAtRoute nie powienien zwracać też URL'a do nowego obiektu? Postman pokazuje tam tylko w JSON'ie body tego obiektu.s
+            //[Note] - createAtRoute wysyła URL w header'ze i stamtąd można odczytać adres -  Czy ten middleware CreatedAtRoute nie powienien zwracać też URL'a do nowego obiektu? Postman pokazuje tam tylko w JSON'ie body tego obiektu.s
         }
 
         [HttpPatch("{id}")]
@@ -240,22 +232,6 @@ namespace RestApiTest.Controllers
             logger.LogInformation("Element with given ID has been successfully removed");
             return NoContent(); //[Note] Jak zwrócić element usunięty? Ma być wtedy zwracany status OK z obiektem? [OK + obiekt]
         }
-        
-        private IEnumerable<QuestionPost> CreateSampleData(int requiredNumberOfSamples)
-        {
-            List<QuestionPost> posts = new List<QuestionPost>();
-            for (int postIndex = 1; postIndex <= requiredNumberOfSamples; ++postIndex)
-            {
-                posts.Add(new QuestionPost()
-                {
-                    //Author = "User" + postIndex,
-                    Content = DateTime.Now.ToShortDateString(),
- //                   Modified = DateTime.Now.ToLongDateString(),
-                    Title = "Entry #" + postIndex
-                });
-            }
-            return posts;
-        }
     }
 }
 
@@ -270,8 +246,8 @@ namespace RestApiTest.Controllers
 //Done: pageowanie rezultatów zwracanych przez getAll posts //[Note] - możliwe 2 podejścia a) podawać do backend'u rozmiar paczki do zwrotu i wtedy fronend odpowiada za wyznaczanie stron (bardziej elastyczne rozwiązanie), b) podawać do backendu numer strony do zwrotu, a backend wylicza strony (lepsze w naszym przypadku, bo nie mamy frontendu)
 
 //Zadanie z 24.07
-//TODO: tworzenie danych tymczasowych / początkowych przenieść do startup'u (wzorzec inicjalizacji bazy danych)
-//TODO: po inicjalizacji bazy danych w startup'ie wymuszać programistycznie utworzenie migracji + przed rozpoczęciem jakichkolwiek akcji - wywoływać programistycznie aktualizację bazy do właściwego stanu
+//Done: tworzenie danych tymczasowych / początkowych przenieść do startup'u (wzorzec inicjalizacji bazy danych)
+//Done: po inicjalizacji bazy danych w startup'ie wymuszać programistycznie utworzenie migracji + przed rozpoczęciem jakichkolwiek akcji - wywoływać programistycznie aktualizację bazy do właściwego stanu
 //TODO: z poziomu kontrolerów wywoływać service walidujący //[Note] - nie, ma to być zwykłe class library - services to po prostu terminologia oznaczająca logikę biznesową - czy ten projekt ma w praktyce rzeczywiście być service'm cały czas działającym w tle, czy wystarczy zwykły obiekt powoływany czasowo tylko na potrzeby walidacji?
 //TODO: jeśli property przekazane do put / patch jest błędne, zwracać bad request z poziomu kontrolera
 //TODO: ApplyPatch przenieść do klasy bazowego repo i zmienić nazwę na Update tylko z przeładowaniem (żeby patch i put korzystały z tej samej metody, ale osiąganej z różnych adresów)
@@ -283,4 +259,4 @@ namespace RestApiTest.Controllers
 //[Note] - to jest domyślnie ukrywane w ciele zapytania POST -> ciało jest automatycznie hash'owane i nic z elementów wysyłanych POSTem nie leci w postaci jawnej - Jak działa niejawne przekazywanie parametrów, jeśli z formularza html określi się coś, jako niewidoczne w request'cie, bo nie przypominam sobie, żeby tam się definiowało jakieś szyfrowanie itp. domyślnie
 //TODO: [future] - generyczne filtorwanie - dać możliwość definiowania większej ilości filtrów w parametrze URL, np. rozdzielanych przez | i potem odpowiednio parsowanych i aplikowanych
 
-//TODO: pageowanie od razu w get;
+//Done: pageowanie od razu w get;

@@ -94,7 +94,7 @@ namespace RestApiTest
                 {
                     //[Note] - jeśli są problemy z już użytym contextem, można w connection stringu podać flagę dopuszczającą wiele połączeń: MultipleActiveResultSets=true
                     var context = serviceScope.ServiceProvider.GetService<ForumContext>();
-                    //context.Database.EnsureCreated(); //[Note] jeśli baza zostanie stworzona przez EnsureCreated - nie używane są do tego migracje i nie da się już na takiej bazie użyć migracji. EnsureCreated jest zazwyczaj używane tylko jeśli potrzeba jakiejś szybko tworzonej bazy na potrzeby testów
+                    //context.Database.EnsureCreated(); //[Note] jeśli baza zostanie stworzona przez EnsureCreated - nie używane są do tego migracje i nie da się już na takiej bazie użyć migracji. EnsureCreated jest zazwyczaj używane tylko jeśli potrzeba jakiejś szybko tworzonej bazy na potrzeby testów (https://stackoverflow.com/questions/38238043/how-and-where-to-call-database-ensurecreated-and-database-migrate)
                     IDbInitializer dbInitializer = new DatabaseInitializer(loggerFactory.CreateLogger<DatabaseInitializer>()/*app.ApplicationServices.GetService<ILogger<DatabaseInitializer>*/);
                     dbInitializer.PrepareSampleData(serviceScope.ServiceProvider.GetService<ForumContext>(), true);
                 }
