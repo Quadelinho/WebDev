@@ -34,7 +34,7 @@ namespace RestApiTest.Controllers
             this.repository = repository;
             mappingProvider = mapper;
             this.configuration = configuration;
-            maxPostsPerPage = configuration.GetValue<int>("MaxPostsPerPage"); //[Note - można dynamicznie - parametr w starup, przy definiowaniu plików ustawień - jeśli true, będzie zaczytywany dynamicznie, nawet jeśli zostanie zmieniony w locie (ryzyko - może doprowadzić do problemów z indempotencją - jeśli ktoś podmieni plik w trakcie, to samo zapytanie może dać różne wyniki. Dodatkowo potem mogą być fałszywe wpisy w logach (np. jeśli ktoś zmieni na wartość generującą błąd, a potem przywróci wartość właściwą)] - Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
+            maxPostsPerPage = configuration != null ? configuration.GetValue<int>("MaxPostsPerPage") : 5; //[Note - można dynamicznie - parametr w starup, przy definiowaniu plików ustawień - jeśli true, będzie zaczytywany dynamicznie, nawet jeśli zostanie zmieniony w locie (ryzyko - może doprowadzić do problemów z indempotencją - jeśli ktoś podmieni plik w trakcie, to samo zapytanie może dać różne wyniki. Dodatkowo potem mogą być fałszywe wpisy w logach (np. jeśli ktoś zmieni na wartość generującą błąd, a potem przywróci wartość właściwą)] - Czy w przypadku plików appsettings to zachowuje się tak jak z config'ami xml - że plik konfiguracji jest ładowany raz przy starcie aplikacji nie może zostać podmieniony w locie?
         }
 
         //GET api/blog
