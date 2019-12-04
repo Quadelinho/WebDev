@@ -91,7 +91,9 @@ namespace RestApiTest.Controllers
             long? count = /*await*/ posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); 
+                //return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //ProjectTo jest optymalizowane pod kątem zapytań wysyłanych przez linq do bazy, ale przez to stwarza problemy w testach, bo zawsze wymaga jakiegoś połączenia z bazą danych
+                return Ok(mappingProvider.Map</*IQueryable*/IEnumerable<BlogPostDTO>>(posts).AsQueryable<BlogPostDTO>()); //[Note] - bo nie znało rzczywistego typu do zmapowania IQueryable bez dokumentów, a IEnumerable już zaczyna zaciągać dane i prawdopodobnie ma jakieś predefiniowane mapowanie, - Dlaczego użycie bezpośrednio IQueryable w Map wyrzuca błąd rzutowania, skoro posts są kolekcją IQueryable?
+                //return Ok(AutoMapper.Mapper.ProjectTo<BlogPostDTO>(posts)); //[Note] - tak było robione dawniej - sprawdzić daty tych artykułów, czy to nie były jakieś historyczne - na necie zalecają użycie takie, jeśli jest rejestracja przez AddAutoMapper, ale tego nie przepuszcza kompilator - chce obiekt
             }
             else
             {

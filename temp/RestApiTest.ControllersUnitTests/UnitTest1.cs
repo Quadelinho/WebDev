@@ -20,6 +20,15 @@ namespace RestApiTest.ControllersUnitTests
 {
     public class UnitTest1
     {
+        private MapperConfiguration mapperConfig;
+        private IMapper mapper;
+
+        public UnitTest1()
+        {
+            mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile()));
+            mapper = mapperConfig.CreateMapper();
+        }
+
         [Fact]
         public async Task TestGetAll()
         {
@@ -28,25 +37,21 @@ namespace RestApiTest.ControllersUnitTests
             var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
             var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var autoMapper = new Mock<IMapper>();
-            autoMapper.Setup(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), It.IsAny<object>())) //[Note] - dla domyslnych: It.IsAny<object>(), dla params: It.IsAny<object[]>() - Czy jest jakis sposob na mock dla metod z domyslnymi parametrami? 
-                .Returns(() => 
-                {
-                    var t = new List<BlogPostDTO>();
-                    foreach (BlogPost post in expectedPosts)
-                    {
-                        t.Add(new BlogPostDTO() { Id = post.Id, Title = post.Title }); 
-                    }
-                    return t.AsQueryable();
-                });
             var configuration = new Mock<IConfiguration>();
             var configurationSection = new Mock<IConfigurationSection>();
             configurationSection.Setup(s => s.Value).Returns("1");
             configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
 
             repository.Setup(r => r.GetAllBlogPostsAsync()).Returns(expectedPosts);
-            
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, autoMapper.Object, configuration.Object);
+            //            var tst = mapper.Map<BlogPostDTO>(expectedPosts.First()); //zwraca prawidlowo mapowanie, ale ProjectTo zwraca puste wyniki z null'em w source'ie, chociaz Author, Comments i Votes zostaly uzupelnione
+            //            var test = mapper.ProjectTo<BlogPostDTO>(expectedPosts); //[Note] - ProjectTo jest wewnetrznie optymalizowany pod katem budowy Linq i zapytan do bazy, zeby nie
+                                                                                            //zaciagac zbednych kolumn (Map powoduje zaciaganie przez Linq wszystkich wlasciwosci, nawet jesli nie sa uzywane przez DTO.
+                                                                                            //ProjectTo zawsze spodziewa sie miec dostep do jakiegos polaczenia z baza, nawet jesli jest wywolywane z poziomu testu i nie pobiera nic z bazy -
+                                                                                            //musi byc albo zwykla baza, albo in memory (ale in memory nie jest najlepszym rozwiazaniem, bo nie sprawdza constrain'ow ani wiezow referencyjnych
+                                                                                            //Dodatkowo, moze sie zdarzyc, ze na bazie in memory testy przejda, a produkcja na rzeczywistej bazie nie bedzie dzialac
+                                                                                            //Czy tak uzyty AutoMapper prubuje uderzac do bazy lub czegos innego definiowanego w services, zeby wyrzucal null source?
+
+            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
 
             //Act
             var posts = await controller.GetAll();
@@ -56,7 +61,7 @@ namespace RestApiTest.ControllersUnitTests
             //var returnedValue = Assert.IsType<IQueryable<BlogPostDTO>>(result.Value);
             var returnedVal = Assert.IsAssignableFrom<IQueryable<BlogPostDTO>>(result.Value);
             Assert.Equal(2, returnedVal.Count());
-            autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), It.IsAny<object>()), Times.Once);
+            //autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), It.IsAny<object>()), Times.Once);
         }
 
         [Fact]
@@ -67,8 +72,6 @@ namespace RestApiTest.ControllersUnitTests
             var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
             var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var autoMapper = new Mock<IMapper>(); //?? czy automapera sie mockuje, czy jest na to jakies sprytniejsze podejscie?
-            autoMapper.Setup(m => m.Map<BlogPost, BlogPostDTO>(It.IsAny<BlogPost>())).Returns<BlogPost>( p => new BlogPostDTO() {Id = p.Id, Title = p.Title, Content = p.Content });
             var configuration = new Mock<IConfiguration>();
             var configurationSection = new Mock<IConfigurationSection>();
             configurationSection.Setup(s => s.Value).Returns("1");
@@ -76,7 +79,7 @@ namespace RestApiTest.ControllersUnitTests
 
             repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync(expectedPostData);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, autoMapper.Object, configuration.Object);
+            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
 
             //Act
             var post = await controller.Get(765);
@@ -87,7 +90,6 @@ namespace RestApiTest.ControllersUnitTests
             Assert.Equal(expectedPostData.Title, returnedValue.Title);
             Assert.Equal(expectedPostData.Id, returnedValue.Id);
             Assert.Equal(expectedPostData.Content, returnedValue.Content);
-            autoMapper.Verify(m => m.Map<BlogPost, BlogPostDTO>(It.IsAny<BlogPost>()), Times.Once());
         }
 
         [Fact]
@@ -125,24 +127,14 @@ namespace RestApiTest.ControllersUnitTests
             var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
             var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var autoMapper = new Mock<IMapper>();
-            autoMapper.Setup(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), null))
-                .Returns(() =>
-                {
-                    var t = new List<BlogPostDTO>();
-                    foreach (BlogPost post in expectedPosts)
-                    {
-                        t.Add(new BlogPostDTO() { Id = post.Id, Title = post.Title });
-                    }
-                    return t.AsQueryable();
-                });
+            
             var configuration = new Mock<IConfiguration>();
             var configurationSection = new Mock<IConfigurationSection>();
             configurationSection.Setup(s => s.Value).Returns("1");
             configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
 
             var queryString = new NameValueCollection { { "postsPerPage", "1" } };
-            var mockRequest = new Mock<HttpRequest>();
+            var mockRequest = new Mock<System.Web.HttpRequest>();
             //mockRequest.Setup(r => r.Body.Read); //?? mock'owanie requestow na potrzeby metod wywolujacych z uzyciem FromQuery - tak, trzeba zamockowac caly context: https://stackoverflow.com/questions/22311805/how-to-set-the-value-of-a-query-string-in-test-method-moq
             mockRequest.Setup(r => r.QueryString).Returns(() =>
             {
@@ -150,12 +142,26 @@ namespace RestApiTest.ControllersUnitTests
                 str.Add("postsPerPage", "1");
                 return str;
             });
+            mockRequest.Setup(r => r.Query).Returns(() => 
+            {
+                //return (IQueryCollection)new List<object>();
+                return (IQueryCollection)new List<KeyValuePair<string, string>>() { { new KeyValuePair<string, string>("postsPerPage", "44") } };
+            });
+            var mockHttpContext = new Mock<HttpContext>();//?? jak przekazac ten context do controller'a? Kiedy i gdzie jest budowany faktyczny obiekt httpcontext?
+            //mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
+            mockHttpContext.Setup(c => c.Request).Returns(() =>
+            {
+                return mockRequest.Object;
+            });
+            //var mockControllerBase = new Mock<ControllerBase>();
+            //mockControllerBase.Setup(r => r.Request).Returns(mockRequest.Object);
 
             decimal outPostsNumber = 0;
             repository.Setup(r => r.GetPostsContaingInTitle(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), out outPostsNumber))
                 .Returns(expectedPosts);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, autoMapper.Object, configuration.Object);
+            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper, configuration.Object);
+            //controller.Request = mockRequest.Object;
 
             //Act
             var posts = await controller.GetPosts("fake", 0, 1);
@@ -165,14 +171,17 @@ namespace RestApiTest.ControllersUnitTests
             //var returnedValue = Assert.IsType<IQueryable<BlogPostDTO>>(result.Value);
             var returnedVal = Assert.IsAssignableFrom<IQueryable<BlogPostDTO>>(result.Value);
             Assert.Equal(2, returnedVal.Count());
-            autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), null), Times.Once);
+            //autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), null), Times.Once);
         }
 
         private IQueryable<BlogPost> ReturnFakePosts()
         {
             List<BlogPost> posts = new List<BlogPost>();
-            posts.Add(new Mock<BlogPost>().Object);
-            posts.Add(new Mock<BlogPost>().Object);
+            var mockAuthor = new Mock<ForumUser>().Object;
+            var mockComments = new List<Comment>() { new Mock<Comment>().Object };
+            var mockVotes = new List<Vote>() { new Mock<Vote>().Object };
+            posts.Add(new BlogPost() { Id = 1, Title = "First fake title", Content = "First fake content", Author = mockAuthor, Comments = mockComments, Votes = mockVotes}/*new Mock<BlogPost>().Object*/);
+            posts.Add(new BlogPost() { Id = 2 , Title = "Second fake title", Content = "Second fake content", Author = mockAuthor, Comments = mockComments, Votes = mockVotes}/*new Mock<BlogPost>().Object*/);
             return posts.AsQueryable();
         }
     }

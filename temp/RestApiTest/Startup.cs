@@ -46,8 +46,8 @@ namespace RestApiTest
             services.AddTransient<ICommentRepository, CommentRepository>(); //[Note] - nie jest konieczne, z transient też działa po usunięciu tych async'ów z db initialize - spradzić, czy użycie scoped nie pomoże na tą inicjalizację
             services.AddTransient<IForumUserRepository, ForumUserRepository>();
             services.AddTransient<IDbInitializer, DatabaseInitializer>();
-            ConfigureAutoMapper();
-            services.AddSingleton<IMapper>(mapper);
+ //           ConfigureAutoMapper();
+ //           services.AddSingleton<IMapper>(mapper);
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             //services.AddDbContext<BlogDBContext>(opt => opt.UseInMemoryDatabase("BlogPostDB_01"));
@@ -72,8 +72,10 @@ namespace RestApiTest
                     Contact = new Contact { Name = "Test User", Email = "test@niepodam.pl" }
                 });
             });
+            
+            services.AddAutoMapper(typeof(MappingProfile));
             //services.AddAutoMapper(); //[Note] - Trzeba zainstalować pakiet nuget'owy AutoMapper.Extensions.Microsoft.DependencyInjection W necie była informacja, żeby zarejestrować AutoMappera tutaj taką metodą. Czy teraz już nie jest to potrzebne, czy jeszcze czegoś mi brakuje?(https://medium.com/ps-its-huuti/how-to-get-started-with-automapper-and-asp-net-core-2-ecac60ef523f)
-            //?? Ta metoda rejestracji AutoMappera jest oznaczona jako obsolate;
+            //?? Ta metoda rejestracji AutoMappera jest oznaczona jako obsolate; //TODO: double check - czym to zastąpili i jakie jest obejście zamiast swojego singletona
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -122,22 +124,23 @@ namespace RestApiTest
             });
         }
 
-        private void ConfigureAutoMapper()
+        private void ConfigureAutoMapper()//TODO: osobna klasa przyjmująca IServiceCollection
         {
-            var mapperConfig = new MapperConfiguration(cfg => 
-            {   //[Note - po refleksjach] Jak działa AutoMapper od środka - robi jakieś dziedziczenie / interfejsy, czy po refleksji? Jaki to ma wpływ na wydajność w praktyce?
-                //?? Czy użycie przeładowania z MemberList np. Source, powoduje, że mapowany obiekt będzie walidowany pod kątem zawierania wszystkich pól z obiektu Source?
-                //Przykład definiowania mapowania innego niż domyślne
-                //cfg.CreateMap<BlogPost, BlogPostDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)); //[Note] - powinno wystarczyć tylko to uszczegółowione (skoro zostało zdefiniowane uszczegółowienie, to ogół będzie domyślnie) - Czy jeśli mam jakieś propertiesy zdefiniowane osobno, to muszę wtedy dodać mapę od tych standardowych nazwanych jednakowo? 
-                cfg.CreateMap<BlogPost, BlogPostDTO>().ReverseMap();
-                //cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)).ReverseMap();
-                cfg.CreateMap<Comment, CommentDTO>().ReverseMap();
-                cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap(); //[Note] - trzeba użyć w odwołaniach EntityFramework'a include, żeby określić, żeby referencje były zaciągane, lub skonfigurować eager loading - Jak zapewnić, by Automapper mapował typy zagnieżdżone? W BlogPostDTO i CommentDTO nie wyświetla nic dla ForumUser
-                cfg.CreateMap<NewsMessage, NewsMessageDTO>().ReverseMap();
-                cfg.CreateMap<Core.Models.Tag, TagDTO>().ReverseMap();
-                cfg.CreateMap<Vote, VoteDTO>().ReverseMap();
-                //[Note - reverse] Czy mam definiować 2 wpisy dla AutoMapper'a, żeby było możliwe mapowanie w obie strony (bo np. get powinien mapować odpowiedź repo na DTO, a post powinien mapować DTO na obiekt modelowy)
-            });
+            ////           var mapperConfig = new MapperConfiguration(cfg => 
+            ////           {   //[Note - po refleksjach] Jak działa AutoMapper od środka - robi jakieś dziedziczenie / interfejsy, czy po refleksji? Jaki to ma wpływ na wydajność w praktyce?
+            ////               //?? Czy użycie przeładowania z MemberList np. Source, powoduje, że mapowany obiekt będzie walidowany pod kątem zawierania wszystkich pól z obiektu Source?
+            ////               //Przykład definiowania mapowania innego niż domyślne
+            ////               //cfg.CreateMap<BlogPost, BlogPostDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)); //[Note] - powinno wystarczyć tylko to uszczegółowione (skoro zostało zdefiniowane uszczegółowienie, to ogół będzie domyślnie) - Czy jeśli mam jakieś propertiesy zdefiniowane osobno, to muszę wtedy dodać mapę od tych standardowych nazwanych jednakowo? 
+            ////               cfg.CreateMap<BlogPost, BlogPostDTO>().ReverseMap();
+            ////               //cfg.CreateMap<Comment, CommentDTO>().ForMember(destination => destination.AuthorId, opts => opts.MapFrom(source => source.Author.Id)).ReverseMap();
+            ////               cfg.CreateMap<Comment, CommentDTO>().ReverseMap();
+            ////               cfg.CreateMap<ForumUser, ForumUserDTO>().ReverseMap(); //[Note] - trzeba użyć w odwołaniach EntityFramework'a include, żeby określić, żeby referencje były zaciągane, lub skonfigurować eager loading - Jak zapewnić, by Automapper mapował typy zagnieżdżone? W BlogPostDTO i CommentDTO nie wyświetla nic dla ForumUser
+            ////               cfg.CreateMap<NewsMessage, NewsMessageDTO>().ReverseMap();
+            ////               cfg.CreateMap<Core.Models.Tag, TagDTO>().ReverseMap();
+            ////               cfg.CreateMap<Vote, VoteDTO>().ReverseMap();
+            ////               //[Note - reverse] Czy mam definiować 2 wpisy dla AutoMapper'a, żeby było możliwe mapowanie w obie strony (bo np. get powinien mapować odpowiedź repo na DTO, a post powinien mapować DTO na obiekt modelowy)
+            ////           });
+            var mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile()));
             mapperConfig.AssertConfigurationIsValid();
             mapper = mapperConfig.CreateMapper();
         }
