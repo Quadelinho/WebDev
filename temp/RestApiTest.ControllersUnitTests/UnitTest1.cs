@@ -15,6 +15,9 @@ using System.Threading.Tasks;
 using RestApiTest.DTO;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Specialized;
+using System.IO;
+using Newtonsoft.Json;
+using RestApiTest.Core.Exceptions;
 
 namespace RestApiTest.ControllersUnitTests
 {
@@ -134,7 +137,10 @@ namespace RestApiTest.ControllersUnitTests
             configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
 
             var queryString = new NameValueCollection { { "postsPerPage", "1" } };
-            var mockRequest = new Mock<System.Web.HttpRequest>();
+            var mockRequest = new Mock</*System.Web.*/HttpRequest>();
+//            var queryS = new QueryString();
+//            queryS.Add("postsPerPage", "1");
+//            var mockRequest = CreateMockRequest(queryS);
             //mockRequest.Setup(r => r.Body.Read); //?? mock'owanie requestow na potrzeby metod wywolujacych z uzyciem FromQuery - tak, trzeba zamockowac caly context: https://stackoverflow.com/questions/22311805/how-to-set-the-value-of-a-query-string-in-test-method-moq
             mockRequest.Setup(r => r.QueryString).Returns(() =>
             {
@@ -174,6 +180,52 @@ namespace RestApiTest.ControllersUnitTests
             //autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), null), Times.Once);
         }
 
+        [Fact]
+        public async Task ShouldAddPost()
+        {
+            //Arrange
+            BlogPost expectedPostData = new BlogPost() { Id = 765, Title = "Fake value", Author = null, Content = "Fake content", Comments = null, Votes = null };
+            var logger = new Mock<ILogger<BlogController>>();
+            var repository = new Mock<IBlogPostRepository>();
+            var hostingEnvironment = new Mock<IHostingEnvironment>();
+            var configuration = new Mock<IConfiguration>();
+            var configurationSection = new Mock<IConfigurationSection>();
+            configurationSection.Setup(s => s.Value).Returns("1");
+            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
+
+            repository.Setup(r => r.AddAsync(It.IsAny<BlogPost>(), null)).ReturnsAsync(expectedPostData);
+
+            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
+
+            //Act
+            var post = await controller.Post(mapper.Map<BlogPostDTO>(expectedPostData));
+
+            //Assert
+            var result = Assert.IsType<CreatedAtRouteResult>(post);
+            var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
+            Assert.Equal(expectedPostData.Title, returnedValue.Title);
+            Assert.Equal(expectedPostData.Id, returnedValue.Id);
+            Assert.Equal(expectedPostData.Content, returnedValue.Content);
+        }
+
+        [Fact]
+        public async Task ShouldThrowExceptionWhileAddingEmptyPost()
+        {
+            //Arrange
+            var logger = new Mock<ILogger<BlogController>>();
+            var repository = new Infrastructure.Repositories.BlogPostRepository(null);
+            var hostingEnvironment = new Mock<IHostingEnvironment>();
+            var configuration = new Mock<IConfiguration>();
+            var configurationSection = new Mock<IConfigurationSection>();
+            configurationSection.Setup(s => s.Value).Returns("1");
+            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
+            
+            BlogController controller = new BlogController(logger.Object, repository, hostingEnvironment.Object, mapper, configuration.Object);
+
+            //Act & Assert
+            await Assert.ThrowsAsync<BlogPostsDomainException>(async () => { await controller.Post(mapper.Map<BlogPostDTO>(null)); });
+        }
+
         private IQueryable<BlogPost> ReturnFakePosts()
         {
             List<BlogPost> posts = new List<BlogPost>();
@@ -183,6 +235,57 @@ namespace RestApiTest.ControllersUnitTests
             posts.Add(new BlogPost() { Id = 1, Title = "First fake title", Content = "First fake content", Author = mockAuthor, Comments = mockComments, Votes = mockVotes}/*new Mock<BlogPost>().Object*/);
             posts.Add(new BlogPost() { Id = 2 , Title = "Second fake title", Content = "Second fake content", Author = mockAuthor, Comments = mockComments, Votes = mockVotes}/*new Mock<BlogPost>().Object*/);
             return posts.AsQueryable();
+        }
+
+        [Fact]
+        public async Task ShouldApplyPatch()
+        {
+            //Arrange
+            BlogPost expectedPostData = new BlogPost() { Id = 765, Title = "Fake value", Author = null, Content = "Fake content", Comments = null, Votes = null };
+            BlogPost modifiedPostData = new BlogPost() { Id = 765, Title = "Updated fake", Author = null, Content = "Fake content", Comments = null, Votes = null };
+            var logger = new Mock<ILogger<BlogController>>();
+            var repository = new Mock<IBlogPostRepository>();
+            var hostingEnvironment = new Mock<IHostingEnvironment>();
+            var configuration = new Mock<IConfiguration>();
+            var configurationSection = new Mock<IConfigurationSection>();
+            configurationSection.Setup(s => s.Value).Returns("1");
+            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
+
+            repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync(expectedPostData);
+            repository.Setup(r => r.ApplyPatchAsync(It.IsAny<BlogPost>(), It.IsAny<List<Core.DTO.PatchDTO>>())).ReturnsAsync(modifiedPostData);
+
+            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
+
+            //Act
+            var post = await controller.Patch(765, new List<Core.DTO.PatchDTO>() { new Core.DTO.PatchDTO() { PropertyName = "Title", PropertyValue = "Updated fake"} });
+
+            //Assert
+            var result = Assert.IsType<OkObjectResult>(post);
+            var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
+            Assert.Equal(modifiedPostData.Title, returnedValue.Title);
+            Assert.Equal(expectedPostData.Id, returnedValue.Id);
+            Assert.Equal(expectedPostData.Content, returnedValue.Content);
+            //repository.Verify(r => r.GetAsync(It.IsAny<long>()));
+            //repository.Verify(r => r.ApplyPatchAsync(It.IsAny<BlogPost>(), It.IsAny<List<Core.DTO.PatchDTO>>()));
+            repository.VerifyAll();
+        }
+
+        private Mock<HttpRequest> CreateMockRequest(object body)
+        {
+            var ms = new MemoryStream();
+            var sw = new StreamWriter(ms);
+
+            var json = JsonConvert.SerializeObject(body);
+
+            sw.Write(json);
+            sw.Flush();
+
+            ms.Position = 0;
+
+            var mockRequest = new Mock<HttpRequest>();
+            mockRequest.Setup(x => x.Body).Returns(ms);
+
+            return mockRequest;
         }
     }
 }
