@@ -25,11 +25,18 @@ namespace RestApiTest.ControllersUnitTests
     {
         private MapperConfiguration mapperConfig;
         private IMapper mapper;
+        private IHostingEnvironment hostingEnvironment = new Mock<IHostingEnvironment>().Object;
+        private ILogger<BlogController> logger = new Mock<ILogger<BlogController>>().Object;
+        private Mock<IConfiguration> configuration = new Mock<IConfiguration>();
+        private Mock<IConfigurationSection> configurationSection = new Mock<IConfigurationSection>();
 
         public UnitTest1()
         {
             mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile()));
             mapper = mapperConfig.CreateMapper();
+
+            configurationSection.Setup(s => s.Value).Returns("1");
+            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
         }
 
         [Fact]
@@ -37,14 +44,7 @@ namespace RestApiTest.ControllersUnitTests
         {
             //Arrange
             IQueryable<BlogPost> expectedPosts = ReturnFakePosts();
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-
             repository.Setup(r => r.GetAllBlogPostsAsync()).Returns(expectedPosts);
             //            var tst = mapper.Map<BlogPostDTO>(expectedPosts.First()); //zwraca prawidlowo mapowanie, ale ProjectTo zwraca puste wyniki z null'em w source'ie, chociaz Author, Comments i Votes zostaly uzupelnione
             //            var test = mapper.ProjectTo<BlogPostDTO>(expectedPosts); //[Note] - ProjectTo jest wewnetrznie optymalizowany pod katem budowy Linq i zapytan do bazy, zeby nie
@@ -54,7 +54,7 @@ namespace RestApiTest.ControllersUnitTests
                                                                                             //Dodatkowo, moze sie zdarzyc, ze na bazie in memory testy przejda, a produkcja na rzeczywistej bazie nie bedzie dzialac
                                                                                             //Czy tak uzyty AutoMapper prubuje uderzac do bazy lub czegos innego definiowanego w services, zeby wyrzucal null source?
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper/*autoMapper.Object*/, configuration.Object);
 
             //Act
             var posts = await controller.GetAll();
@@ -72,17 +72,11 @@ namespace RestApiTest.ControllersUnitTests
         {
             //Arrange
             BlogPost expectedPostData = new BlogPost() { Id = 765, Title = "Fake value", Author = null, Content = "Fake content", Comments = null, Votes = null };
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-
+            
             repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync(expectedPostData);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
 
             //Act
             var post = await controller.Get(765);
@@ -99,19 +93,13 @@ namespace RestApiTest.ControllersUnitTests
         public async Task ShouldReturnNotFoundForGetWithNotExistingID()
         {
             //Arrange
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
             var autoMapper = new Mock<IMapper>();
             autoMapper.Setup(m => m.Map<BlogPost, BlogPostDTO>(It.IsAny<BlogPost>()));
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-
+            
             repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync((BlogPost)null);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, autoMapper.Object, configuration.Object);
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, autoMapper.Object, configuration.Object);
             const long searchedId = 75;
             //Act
             var post = await controller.Get(searchedId);
@@ -127,15 +115,8 @@ namespace RestApiTest.ControllersUnitTests
         {
             //Arrange
             IQueryable<BlogPost> expectedPosts = ReturnFakePosts();
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
             
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-
             var queryString = new NameValueCollection { { "postsPerPage", "1" } };
             var mockRequest = new Mock</*System.Web.*/HttpRequest>();
 //            var queryS = new QueryString();
@@ -166,7 +147,7 @@ namespace RestApiTest.ControllersUnitTests
             repository.Setup(r => r.GetPostsContaingInTitle(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), out outPostsNumber))
                 .Returns(expectedPosts);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper, configuration.Object);
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
             //controller.Request = mockRequest.Object;
 
             //Act
@@ -185,17 +166,11 @@ namespace RestApiTest.ControllersUnitTests
         {
             //Arrange
             BlogPost expectedPostData = new BlogPost() { Id = 765, Title = "Fake value", Author = null, Content = "Fake content", Comments = null, Votes = null };
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-
+            
             repository.Setup(r => r.AddAsync(It.IsAny<BlogPost>(), null)).ReturnsAsync(expectedPostData);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
 
             //Act
             var post = await controller.Post(mapper.Map<BlogPostDTO>(expectedPostData));
@@ -212,15 +187,9 @@ namespace RestApiTest.ControllersUnitTests
         public async Task ShouldThrowExceptionWhileAddingEmptyPost()
         {
             //Arrange
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Infrastructure.Repositories.BlogPostRepository(null);
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-            
-            BlogController controller = new BlogController(logger.Object, repository, hostingEnvironment.Object, mapper, configuration.Object);
+
+            BlogController controller = new BlogController(logger, repository, hostingEnvironment, mapper, configuration.Object);
 
             //Act & Assert
             await Assert.ThrowsAsync<BlogPostsDomainException>(async () => { await controller.Post(mapper.Map<BlogPostDTO>(null)); });
@@ -243,18 +212,12 @@ namespace RestApiTest.ControllersUnitTests
             //Arrange
             BlogPost expectedPostData = new BlogPost() { Id = 765, Title = "Fake value", Author = null, Content = "Fake content", Comments = null, Votes = null };
             BlogPost modifiedPostData = new BlogPost() { Id = 765, Title = "Updated fake", Author = null, Content = "Fake content", Comments = null, Votes = null };
-            var logger = new Mock<ILogger<BlogController>>();
             var repository = new Mock<IBlogPostRepository>();
-            var hostingEnvironment = new Mock<IHostingEnvironment>();
-            var configuration = new Mock<IConfiguration>();
-            var configurationSection = new Mock<IConfigurationSection>();
-            configurationSection.Setup(s => s.Value).Returns("1");
-            configuration.Setup(c => c.GetSection(It.IsAny<String>())).Returns(configurationSection.Object);
-
+            
             repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync(expectedPostData);
             repository.Setup(r => r.ApplyPatchAsync(It.IsAny<BlogPost>(), It.IsAny<List<Core.DTO.PatchDTO>>())).ReturnsAsync(modifiedPostData);
 
-            BlogController controller = new BlogController(logger.Object, repository.Object, hostingEnvironment.Object, mapper/*autoMapper.Object*/, configuration.Object);
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
 
             //Act
             var post = await controller.Patch(765, new List<Core.DTO.PatchDTO>() { new Core.DTO.PatchDTO() { PropertyName = "Title", PropertyValue = "Updated fake"} });
@@ -267,6 +230,48 @@ namespace RestApiTest.ControllersUnitTests
             Assert.Equal(expectedPostData.Content, returnedValue.Content);
             //repository.Verify(r => r.GetAsync(It.IsAny<long>()));
             //repository.Verify(r => r.ApplyPatchAsync(It.IsAny<BlogPost>(), It.IsAny<List<Core.DTO.PatchDTO>>()));
+            repository.VerifyAll();
+        }
+
+        [Fact]
+        public async Task ShouldReturnNotFoundForInvalidPatch()
+        {
+            //Arrange
+            BlogPost modifiedPostData = new BlogPost() { Id = 765, Title = "Updated fake", Author = null, Content = "Fake content", Comments = null, Votes = null };
+            var repository = new Mock<IBlogPostRepository>();
+
+            repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync((BlogPost)null);
+            repository.Setup(r => r.ApplyPatchAsync(It.IsAny<BlogPost>(), It.IsAny<List<Core.DTO.PatchDTO>>())).ReturnsAsync(modifiedPostData);
+
+            BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
+
+            //Act
+            var post = await controller.Patch(765, new List<Core.DTO.PatchDTO>() { new Core.DTO.PatchDTO() { PropertyName = "Title", PropertyValue = "Updated fake" } });
+
+            //Assert
+            var result = Assert.IsType<NotFoundObjectResult>(post);
+            var returnedValue = Assert.IsType<long>(result.Value);
+            Assert.Equal(modifiedPostData.Id, returnedValue);
+            repository.Verify(r => r.GetAsync(It.IsAny<long>()), Times.Once);
+            repository.Verify(r => r.ApplyPatchAsync(It.IsAny<BlogPost>(), It.IsAny<List<Core.DTO.PatchDTO>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ShouldPerformPut()
+        {
+            //Arrange
+            BlogPost updatedPost = new BlogPost() { Id = 765, Title = "Updated fake", Author = null, Content = "Fake content", Comments = null, Votes = null };
+            var repository = new Mock<IBlogPostRepository>();
+            repository.Setup(r => r.UpdateAsync(It.IsAny<BlogPost>(), null)).ReturnsAsync(updatedPost);
+
+            var controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
+
+            //Act
+            var post = await controller.Put(updatedPost.Id, mapper.Map<BlogPostDTO>(updatedPost));
+
+            //Assert
+            var result = Assert.IsType<OkObjectResult>(post);
+            var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
             repository.VerifyAll();
         }
 
