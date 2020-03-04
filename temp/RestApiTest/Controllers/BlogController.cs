@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -57,11 +58,11 @@ namespace RestApiTest.Controllers
         //}
 
         //GET api/blog/5
-        [HttpGet("{id}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
+        [HttpGet("{id:int}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
                                             //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //[??]Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
         [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status200OK)] //[Note - DTO] Czy dla dokumentacji Swagger'a podaje się jako typ zwracany obiekty DTO, czy rzeczywistej klasy?
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<BlogPostDTO>> Get(long id)
+        [ProducesResponseType(typeof(long), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Get(long id)
         {
             logger.LogInformation("Calling get for object with id =" + id);
             BlogPost post = await repository.GetAsync(id);
@@ -79,7 +80,7 @@ namespace RestApiTest.Controllers
 
         //Done: Szukanie po tytułach (adres endpointa: /posts/?title contains) 
         //Done: pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
-
+//cors        [DisableCors]
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -91,6 +92,7 @@ namespace RestApiTest.Controllers
             long? count = /*await*/ posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
+                //Response.Headers.Add("Access-Control-Allow-Origin", "*"); //dopiero dodanie tego pozwolilo, zeby ten response byl zaakceptowany
                 //return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //ProjectTo jest optymalizowane pod kątem zapytań wysyłanych przez linq do bazy, ale przez to stwarza problemy w testach, bo zawsze wymaga jakiegoś połączenia z bazą danych
                 return Ok(mappingProvider.Map</*IQueryable*/IEnumerable<BlogPostDTO>>(posts).AsQueryable<BlogPostDTO>()); //[Note] - bo nie znało rzczywistego typu do zmapowania IQueryable bez dokumentów, a IEnumerable już zaczyna zaciągać dane i prawdopodobnie ma jakieś predefiniowane mapowanie, - Dlaczego użycie bezpośrednio IQueryable w Map wyrzuca błąd rzutowania, skoro posts są kolekcją IQueryable?
                 //return Ok(AutoMapper.Mapper.ProjectTo<BlogPostDTO>(posts)); //[Note] - tak było robione dawniej - sprawdzić daty tych artykułów, czy to nie były jakieś historyczne - na necie zalecają użycie takie, jeśli jest rejestracja przez AddAutoMapper, ale tego nie przepuszcza kompilator - chce obiekt
@@ -106,8 +108,9 @@ namespace RestApiTest.Controllers
         //Done: [Note] - nic nie trzeba osobno dodawać w opcjach Startupu, tylko MUSI być '/' między ścieżką endpoint'a, a parametrem, a sam pytajnik musi być po prawej stronie od nazwy parametru - Poszukać co trzeba zdefiniować w Startup'ie, żeby można było w routing podawać '?' - jest to bardziej czytelne i lepiej prezentowane w Swagger'ze
         //[HttpGet("/api/blogposts/find/{titlePartToFind?}")] //[Note] - tak jak w pytaniu - Jak określić, żeby podawać parametry po "?" (np. find?title=test)? //TODO: wyszukać przykład użycia i konfiguracji (http query parameter)
         //[HttpGet("find/{titlePartToFind?}/{pageNo?}/{postsPerPage?}")] //[Note] - parametry tak podane są opcjonalne, mogą być podawane w URL'u request'a w dowolnej kolejności i może ich nie być
-        [HttpGet("{titlePartToFind?}")]
-        [HttpGet("posts/{titlePartToFind?}/{pageNo?}/{postsPerPage?}")]
+        [HttpGet("find/{titlePartToFind?}")] //?? jak mam tego używać? odwołanie przez http://localhost:5001/api/posts?titlePartToFind=entry - 
+                // odwołanie przez http://localhost:5001/api/posts/titlePartToFind=entry
+        [HttpGet("find/{titlePartToFind}/{pageNo:int?}/{postsPerPage:int?}")] //?? czy tutaj stosuje się też typy nullowalne?
         [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

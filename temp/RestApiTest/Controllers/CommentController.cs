@@ -175,6 +175,25 @@ namespace RestApiTest.Controllers
             }
         }
 
+        //[HttpGet("comments/{approved:boolean?}", Name = "GetAllCommentsForStatus")]
+        //[ProducesResponseType(typeof(IEnumerable<CommentDTO>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status204NoContent)]
+        //public /*async Task<*/ActionResult<IEnumerable<CommentDTO>>/*>*/ GetAllCommentsForApprovalStatus([FromQuery]bool? approved)
+        //{
+        //    IQueryable<CommentDTO> commentsToReturn = approved.HasValue ? 
+        //        mappingProvider.ProjectTo<CommentDTO>(repository.GetPostsForStatus(approved.Value))
+        //        : commentsToReturn = mappingProvider.ProjectTo<CommentDTO>(repository.GetAllComments());
+
+        //    if (commentsToReturn.Count() > 0)
+        //    {
+        //        return Ok(commentsToReturn);
+        //    }
+        //    else
+        //    {
+        //        return NoContent();
+        //    }
+        //}
+
         //TODO: Metody do pobierania wszystkich zatwierdzonych lub niezatwierdzonych komentarzy (lub parametr do metody get)
     }
 }

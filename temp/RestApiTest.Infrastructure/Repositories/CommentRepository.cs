@@ -83,6 +83,16 @@ namespace RestApiTest.Infrastructure.Repositories
             return await localContext.PostComments.FindAsync(id);
         }
 
+        public IQueryable<Comment> GetAllComments()
+        {
+            return localContext.PostComments;
+        }
+
+        public IQueryable<Comment> GetPostsForStatus(bool approved)
+        {
+            return localContext.PostComments.Where(c => c.Approved == approved);
+        }
+
         public override async Task<Comment> UpdateAsync(Comment objectToUpdate, Action additionalPreSteps = null)
         {
             return await base.UpdateAsync(objectToUpdate, () =>

@@ -15,4 +15,7 @@ namespace RestApiTest.DTO
         public IEnumerable<CommentDTO> Comments { get; set; }
         public IEnumerable<VoteDTO> Votes { get; set; }
     }
+
+    //todo: change DTOs to request/response (e.g. postUpdateRequest)
+    //todo: folders change to domain (e.g. posts with postController, postValidator etc)
 }

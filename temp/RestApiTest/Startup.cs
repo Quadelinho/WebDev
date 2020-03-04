@@ -39,8 +39,17 @@ namespace RestApiTest
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(options =>
+            {
+                options.AddPolicy("local", builder => {
+                    builder.WithOrigins("http://localhost:4200/")
+                    .AllowAnyHeader()
+                    .AllowAnyOrigin()
+                    .AllowAnyMethod();
+                });
+            });
             //[Note] - te kolejne metody umożliwiające rejestrowanie kolejnych usług są uzyskiwane na zasadzie mechanizmu zwanego "fluent interfaces"
-                //Każdy pakiet dodaje swoje extensiony do namespace'a frameworkowego (np. System.Collections) i wtedy każda klasa, która w using'u poda ten pakiet widzi wszystkie to rozszerzenia
+            //Każdy pakiet dodaje swoje extensiony do namespace'a frameworkowego (np. System.Collections) i wtedy każda klasa, która w using'u poda ten pakiet widzi wszystkie to rozszerzenia
             services.AddSingleton<IConfiguration>(Configuration);
             services.AddTransient<IBlogPostRepository, BlogPostRepository>();  //[Note] - może przez dziedziczenie po wspólnych interface'ach, bo normalnie powinno to działać bez jawnej deklaracji - Dlaczego muszę wszystkie te repozytoria rejestrować jawnie dla DI?
             services.AddTransient<ICommentRepository, CommentRepository>(); //[Note] - nie jest konieczne, z transient też działa po usunięciu tych async'ów z db initialize - spradzić, czy użycie scoped nie pomoże na tą inicjalizację
@@ -81,6 +90,7 @@ namespace RestApiTest
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            app.UseCors("local");
             using (var serviceScope = app.ApplicationServices.CreateScope())
             {
                 var context = serviceScope.ServiceProvider.GetService<ForumContext>();

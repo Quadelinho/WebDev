@@ -82,7 +82,7 @@ namespace RestApiTest.ControllersUnitTests
             var post = await controller.Get(765);
 
             //Assert
-            var result = Assert.IsType<OkObjectResult>(post.Result);
+            var result = Assert.IsType<OkObjectResult>(post as ObjectResult);
             var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
             Assert.Equal(expectedPostData.Title, returnedValue.Title);
             Assert.Equal(expectedPostData.Id, returnedValue.Id);
@@ -105,7 +105,7 @@ namespace RestApiTest.ControllersUnitTests
             var post = await controller.Get(searchedId);
 
             //Assert
-            var res = Assert.IsType<NotFoundObjectResult>(post.Result);
+            var res = Assert.IsType<NotFoundObjectResult>(post as ObjectResult);
             Assert.Equal(searchedId, res.Value);
             autoMapper.Verify(m => m.Map<BlogPost, BlogPostDTO>(It.IsAny<BlogPost>()), Times.Never());
         }

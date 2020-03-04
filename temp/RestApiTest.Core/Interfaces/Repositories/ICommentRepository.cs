@@ -11,5 +11,7 @@ namespace RestApiTest.Core.Interfaces.Repositories
         Task<IQueryable<Comment>> GetAllCommentsForUser(long authorId);
         Task<Comment> ApproveCommentAsync(long id);
         Task<Comment> MarkCommentAsSolutionAsync(long id);
+        IQueryable<Comment> GetAllComments();
+        IQueryable<Comment> GetPostsForStatus(bool approved);
     }
 }
