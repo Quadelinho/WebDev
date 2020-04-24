@@ -32,4 +32,8 @@
     <ProjectReference Include="..\RestApiTest.Infrastructure\RestApiTest.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTO\RequestDTOs\" />
+  </ItemGroup>
+
 </Project>

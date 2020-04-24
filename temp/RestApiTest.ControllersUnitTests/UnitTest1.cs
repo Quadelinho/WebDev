@@ -18,6 +18,10 @@ using System.Collections.Specialized;
 using System.IO;
 using Newtonsoft.Json;
 using RestApiTest.Core.Exceptions;
+using RestApiTest.DTO.ResponseDTOs;
+using Microsoft.AspNetCore.Http.Internal;
+using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace RestApiTest.ControllersUnitTests
 {
@@ -62,7 +66,7 @@ namespace RestApiTest.ControllersUnitTests
             //Assert
             var result = Assert.IsType<OkObjectResult>(posts.Result);
             //var returnedValue = Assert.IsType<IQueryable<BlogPostDTO>>(result.Value);
-            var returnedVal = Assert.IsAssignableFrom<IQueryable<BlogPostDTO>>(result.Value);
+            var returnedVal = Assert.IsAssignableFrom<IQueryable<BlogPostGetResponse>>(result.Value);
             Assert.Equal(2, returnedVal.Count());
             //autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), It.IsAny<object>()), Times.Once);
         }
@@ -83,7 +87,7 @@ namespace RestApiTest.ControllersUnitTests
 
             //Assert
             var result = Assert.IsType<OkObjectResult>(post as ObjectResult);
-            var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
+            var returnedValue = Assert.IsType<BlogPostGetResponse>(result.Value);
             Assert.Equal(expectedPostData.Title, returnedValue.Title);
             Assert.Equal(expectedPostData.Id, returnedValue.Id);
             Assert.Equal(expectedPostData.Content, returnedValue.Content);
@@ -95,7 +99,7 @@ namespace RestApiTest.ControllersUnitTests
             //Arrange
             var repository = new Mock<IBlogPostRepository>();
             var autoMapper = new Mock<IMapper>();
-            autoMapper.Setup(m => m.Map<BlogPost, BlogPostDTO>(It.IsAny<BlogPost>()));
+            autoMapper.Setup(m => m.Map<BlogPost, BlogPostGetResponse>(It.IsAny<BlogPost>()));
             
             repository.Setup(r => r.GetAsync(It.IsAny<long>())).ReturnsAsync((BlogPost)null);
 
@@ -107,7 +111,7 @@ namespace RestApiTest.ControllersUnitTests
             //Assert
             var res = Assert.IsType<NotFoundObjectResult>(post as ObjectResult);
             Assert.Equal(searchedId, res.Value);
-            autoMapper.Verify(m => m.Map<BlogPost, BlogPostDTO>(It.IsAny<BlogPost>()), Times.Never());
+            autoMapper.Verify(m => m.Map<BlogPost, BlogPostGetResponse>(It.IsAny<BlogPost>()), Times.Never());
         }
 
         [Fact]
@@ -118,7 +122,7 @@ namespace RestApiTest.ControllersUnitTests
             var repository = new Mock<IBlogPostRepository>();
             
             var queryString = new NameValueCollection { { "postsPerPage", "1" } };
-            var mockRequest = new Mock</*System.Web.*/HttpRequest>();
+            var mockRequest = new Mock<HttpRequest>();
 //            var queryS = new QueryString();
 //            queryS.Add("postsPerPage", "1");
 //            var mockRequest = CreateMockRequest(queryS);
@@ -131,34 +135,31 @@ namespace RestApiTest.ControllersUnitTests
             });
             mockRequest.Setup(r => r.Query).Returns(() => 
             {
-                //return (IQueryCollection)new List<object>();
-                return (IQueryCollection)new List<KeyValuePair<string, string>>() { { new KeyValuePair<string, string>("postsPerPage", "44") } };
+                Dictionary<string, StringValues> queryValues = new Dictionary<string, StringValues>() { { "postsPerPage", "44" } };
+                return new QueryCollection(queryValues);
             });
+            var mockUrl = new Mock<IUrlHelper>();
             var mockHttpContext = new Mock<HttpContext>();//?? jak przekazac ten context do controller'a? Kiedy i gdzie jest budowany faktyczny obiekt httpcontext?
-            //mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
             mockHttpContext.Setup(c => c.Request).Returns(() =>
             {
                 return mockRequest.Object;
             });
-            //var mockControllerBase = new Mock<ControllerBase>();
-            //mockControllerBase.Setup(r => r.Request).Returns(mockRequest.Object);
 
-            decimal outPostsNumber = 0;
+            decimal outPostsNumber = expectedPosts.Count();
             repository.Setup(r => r.GetPostsContaingInTitle(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), out outPostsNumber))
                 .Returns(expectedPosts);
 
             BlogController controller = new BlogController(logger, repository.Object, hostingEnvironment, mapper, configuration.Object);
-            //controller.Request = mockRequest.Object;
+            AssignHttpContextToController(controller, mockHttpContext.Object);
+            controller.Url = mockUrl.Object;
 
             //Act
             var posts = await controller.GetPosts("fake", 0, 1);
 
             //Assert
             var result = Assert.IsType<OkObjectResult>(posts.Result);
-            //var returnedValue = Assert.IsType<IQueryable<BlogPostDTO>>(result.Value);
-            var returnedVal = Assert.IsAssignableFrom<IQueryable<BlogPostDTO>>(result.Value);
-            Assert.Equal(2, returnedVal.Count());
-            //autoMapper.Verify(m => m.ProjectTo<BlogPostDTO>(It.IsAny<IQueryable<BlogPost>>(), null), Times.Once);
+            var returnedVal = Assert.IsAssignableFrom<PageDTO<BlogPostGetResponse>>(result.Value);
+            Assert.Equal(expectedPosts.Count(), returnedVal.Items.Count);
         }
 
         [Fact]
@@ -177,7 +178,7 @@ namespace RestApiTest.ControllersUnitTests
 
             //Assert
             var result = Assert.IsType<CreatedAtRouteResult>(post);
-            var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
+            var returnedValue = Assert.IsType<BlogPostGetResponse>(result.Value);
             Assert.Equal(expectedPostData.Title, returnedValue.Title);
             Assert.Equal(expectedPostData.Id, returnedValue.Id);
             Assert.Equal(expectedPostData.Content, returnedValue.Content);
@@ -224,7 +225,7 @@ namespace RestApiTest.ControllersUnitTests
 
             //Assert
             var result = Assert.IsType<OkObjectResult>(post);
-            var returnedValue = Assert.IsType<BlogPostDTO>(result.Value);
+            var returnedValue = Assert.IsType<BlogPostGetResponse>(result.Value);
             Assert.Equal(modifiedPostData.Title, returnedValue.Title);
             Assert.Equal(expectedPostData.Id, returnedValue.Id);
             Assert.Equal(expectedPostData.Content, returnedValue.Content);
@@ -291,6 +292,18 @@ namespace RestApiTest.ControllersUnitTests
             mockRequest.Setup(x => x.Body).Returns(ms);
 
             return mockRequest;
+        }
+
+        private void AssignHttpContextToController(ControllerBase controller, HttpContext contextToAssign)
+        {
+            var actionContext = new ActionContext()
+            {
+                HttpContext = contextToAssign,
+                RouteData = new Microsoft.AspNetCore.Routing.RouteData(),
+                ActionDescriptor = new ControllerActionDescriptor()
+            };
+
+            controller.ControllerContext = new ControllerContext(actionContext);
         }
     }
 }

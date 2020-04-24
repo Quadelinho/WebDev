@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,10 +8,10 @@ using RestApiTest.Core.DTO;
 using RestApiTest.Core.Interfaces.Repositories;
 using RestApiTest.Core.Models;
 using RestApiTest.DTO;
+using RestApiTest.DTO.ResponseDTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace RestApiTest.Controllers
@@ -60,7 +59,7 @@ namespace RestApiTest.Controllers
         //GET api/blog/5
         [HttpGet("{id:int}", Name = "GetBlog")] //[Note] Co daje ta nazwa? Odwołanie się przez nią mi nie przechodzi - nie do url, tylko alias na potrzeby kodu
                                             //[Note] Czy to można zdefiniować, żeby podawać wartość w parametrze typu "...?id=5"? //[??]Jak wywołać to z użyciem tego ActionName? ODP: tak, ale trzeba by zmienić routing
-        [ProducesResponseType(typeof(BlogPostDTO), StatusCodes.Status200OK)] //[Note - DTO] Czy dla dokumentacji Swagger'a podaje się jako typ zwracany obiekty DTO, czy rzeczywistej klasy?
+        [ProducesResponseType(typeof(BlogPostGetResponse), StatusCodes.Status200OK)] //[Note - DTO] Czy dla dokumentacji Swagger'a podaje się jako typ zwracany obiekty DTO, czy rzeczywistej klasy?
         [ProducesResponseType(typeof(long), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Get(long id)
         {
@@ -68,7 +67,7 @@ namespace RestApiTest.Controllers
             BlogPost post = await repository.GetAsync(id);
             if (post != null)
             {
-                BlogPostDTO postToReturn = mappingProvider.Map<BlogPost, BlogPostDTO>(post); //[Note] - konfiguracja początkowa jest niezbędna, bo bez niej automapper nie będzie w stanie niczego rozwiązać. Dodatkowo tutaj nie trzeba podawać obu typów, wystarczy docelowy, jeśli mapowanie jest unikalne (np. nie ma w konfiguracji mapowania jednego źródła na kilka docelowych) - Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
+                BlogPostGetResponse postToReturn = mappingProvider.Map<BlogPost, BlogPostGetResponse>(post); //[Note] - konfiguracja początkowa jest niezbędna, bo bez niej automapper nie będzie w stanie niczego rozwiązać. Dodatkowo tutaj nie trzeba podawać obu typów, wystarczy docelowy, jeśli mapowanie jest unikalne (np. nie ma w konfiguracji mapowania jednego źródła na kilka docelowych) - Czy skoro tutaj się tego używa, to ta konfiguracja nie jest zbędna, bo to trochę wygląda na redundancję? A może ja coś źle robię?
                 return Ok(postToReturn);
             }
             else
@@ -80,11 +79,10 @@ namespace RestApiTest.Controllers
 
         //Done: Szukanie po tytułach (adres endpointa: /posts/?title contains) 
         //Done: pageing -> response next page (link do następnej strony) (adres endpointa: /posts/?page=)
-//cors        [DisableCors]
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<BlogPostGetResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetAll()
+        public async Task<ActionResult<PageDTO<BlogPostGetResponse>>> GetAll()
         {
             //[Note] - powinny być osobne metody, które będą procesowały typy z hierarchii zgodnie z założeniami klienta / biznesu - Czy to powinno też zwracać obiekty klasy pochodnej (QuestionPost), bo skoro są pochodnymi to są też postami (domenowo tak samo - pytanie też jest postem) //TODO: rozdzielić na osobne metody
             logger.LogInformation("Calling get for all posts");
@@ -94,7 +92,7 @@ namespace RestApiTest.Controllers
             {
                 //Response.Headers.Add("Access-Control-Allow-Origin", "*"); //dopiero dodanie tego pozwolilo, zeby ten response byl zaakceptowany
                 //return Ok(mappingProvider.ProjectTo<BlogPostDTO>(posts)); //ProjectTo jest optymalizowane pod kątem zapytań wysyłanych przez linq do bazy, ale przez to stwarza problemy w testach, bo zawsze wymaga jakiegoś połączenia z bazą danych
-                return Ok(mappingProvider.Map</*IQueryable*/IEnumerable<BlogPostDTO>>(posts).AsQueryable<BlogPostDTO>()); //[Note] - bo nie znało rzczywistego typu do zmapowania IQueryable bez dokumentów, a IEnumerable już zaczyna zaciągać dane i prawdopodobnie ma jakieś predefiniowane mapowanie, - Dlaczego użycie bezpośrednio IQueryable w Map wyrzuca błąd rzutowania, skoro posts są kolekcją IQueryable?
+                return Ok(mappingProvider.Map</*IQueryable*/IEnumerable<BlogPostGetResponse>>(posts).AsQueryable<BlogPostGetResponse>()); //[Note] - bo nie znało rzczywistego typu do zmapowania IQueryable bez dokumentów, a IEnumerable już zaczyna zaciągać dane i prawdopodobnie ma jakieś predefiniowane mapowanie, - Dlaczego użycie bezpośrednio IQueryable w Map wyrzuca błąd rzutowania, skoro posts są kolekcją IQueryable?
                 //return Ok(AutoMapper.Mapper.ProjectTo<BlogPostDTO>(posts)); //[Note] - tak było robione dawniej - sprawdzić daty tych artykułów, czy to nie były jakieś historyczne - na necie zalecają użycie takie, jeśli jest rejestracja przez AddAutoMapper, ale tego nie przepuszcza kompilator - chce obiekt
             }
             else
@@ -111,10 +109,10 @@ namespace RestApiTest.Controllers
         [HttpGet("find/{titlePartToFind?}")] //?? jak mam tego używać? odwołanie przez http://localhost:5001/api/posts?titlePartToFind=entry - 
                 // odwołanie przez http://localhost:5001/api/posts/titlePartToFind=entry
         [HttpGet("find/{titlePartToFind}/{pageNo:int?}/{postsPerPage:int?}")] //?? czy tutaj stosuje się też typy nullowalne?
-        [ProducesResponseType(typeof(IEnumerable<BlogPostDTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<BlogPostGetResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<PageDTO<BlogPostDTO>>> GetPosts([FromQuery]string titlePartToFind = "", [FromQuery] int pageNo = 0, [FromQuery] int postsPerPage = defaultPostsPerPage) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
+        public async Task<ActionResult<PageDTO<BlogPostGetResponse>>> GetPosts([FromQuery]string titlePartToFind = "", [FromQuery] int pageNo = 0, [FromQuery] int postsPerPage = defaultPostsPerPage) //[Note] - przeglądarka powinna to zdekodować prawidłowo i przesłać już odpowiednio sformatowanego URL'a - Jak zapewnić możliwość odpytania o znaki specjalne (np. w tytule Entry #)? Podanie w URL formy zakodowanej z %23 przekazuje wartość "#" w parametrze, ale w bazie nie jest to znajdywane. Czy to może być wina comparator'a stringów?
         { //[Note] - w praktyce osoba pisząca API backend'owe nie powinna się tym przejmować, bo to leży w kwestii używającego API, żeby przekazać właściwie zakodowane znaki. Najlepiej do tesów używać Postmana, bo on to powinien zakodować prawidłowo (przeglądarki nie przesyłają jawnie podanych znaków '#', bo są one używane do określenia ostatnio odwiedzanej pozycji paska przewijania - Czy można jakoś wymusić, żeby znaki specjalne były odpowiednio parsowane? Jak wpiszę w przeglądarce ?... entry # to nie koduje i nie przesyła tego #, dopiero go przekazuje jak sam podam entry%20%23 (chociaż spacje koduje prawidłowo od razu)?
             if (/*!Request.Query.ContainsKey("titlePartToFind") //[Note] - można w validatorze, ale zależy od ustalenia z zespołem - Czy tutaj nie powinno się robić walidacji, czy jest w QueryString chociaż jeden parametr wymagany?
                 || */(Request.Query.ContainsKey("postsPerPage") && postsPerPage > maxPostsPerPage)) //[Note] - można w parametrze robić binding do obiektu: np. GetByTitle([FromQuery]ModelObject paramName) i potem sprawdzać if(ModelState.IsValid) -> to sprawdzi, czy parametr podany w query da radę być zmapowany na właściwość obiektu
@@ -130,7 +128,7 @@ namespace RestApiTest.Controllers
             long? count = posts?.Count();
             if (count.HasValue && count.Value > 0)
             {
-                PageDTO<BlogPostDTO> valueToReturn = new PageDTO<BlogPostDTO>(mappingProvider.ProjectTo<BlogPostDTO>(posts).ToList(),
+                PageDTO<BlogPostGetResponse> valueToReturn = new PageDTO<BlogPostGetResponse>(mappingProvider.Map</*IQueryable*/IEnumerable<BlogPostGetResponse>>(posts).ToList(),
                     (int)totalPages,
                     Url.Link("pagedPosts", new { pageNo = ++pageNo, postsPerPage = postsPerPage }));
 
